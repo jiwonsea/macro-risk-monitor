@@ -13,27 +13,33 @@ historical_analogy:
   - Greenwood-Hanson (2013) issuer-quality 후기 국면
 
 triggers:
-  - id: openai_secondary_premium
+  - id: openai_implied_valuation_discount
     category: leading
     source: manual_override
-    series: openai_secondary_premium_pct
+    series: openai_implied_valuation_discount_pct
     unit: percent
-    description: Hiive·Forge·EquityZen에서 OpenAI Series F 우선주 거래가 / 직전 1차 평가가
+    description: |
+      OpenAI implied valuation (Prism·Premier·Hiive·Forge 헤드라인 indicative price 기반)
+      대비 직전 primary/tender valuation 디스카운트. 부호: 디스카운트=음수, 프리미엄=양수.
+      share-class premium 직접 계산은 회피 (bid/ask·reference 일관성 부족).
     threshold:
-      red: "<= -10"      # 10%+ 디스카운트
+      red: "<= -10"
       yellow: "<= -5"
       green: ">= 10"
 
-  - id: oracle_cds_5y
+  - id: oracle_bond_spread_5y
     category: leading
     source: manual_override
-    series: oracle_cds_5y_bps
-    unit: bps
-    description: Oracle Corp 5년 senior CDS spread (Bloomberg/ICE 인용치)
+    series: oracle_bond_spread_5y_zscore
+    unit: zscore
+    description: |
+      ORCL 5Y benchmark bond yield − 매칭 5Y UST yield의 rolling z-score (24m window).
+      raw bps 대신 z-score 사용 — 절대 spike(예: 139bps)는 cherry-pick 위험.
+      retail source: FINRA TRACE 또는 Yahoo Finance bond yield.
     threshold:
-      red: "> 139"        # 2025-12 고점 갱신
-      yellow: "> 100"
-      green: "< 100"
+      red: "> 2"          # 2σ 이상 widening
+      yellow: "> 1"
+      green: "< 0.5"
 
   - id: hyperscaler_capex_tone
     category: coincident
@@ -45,16 +51,34 @@ triggers:
       yellow: "1개사"
       green: "0개사 (compute-constrained 유지)"
 
-  - id: dram_spot_price
-    category: lagging
+  - id: dram_spot_price_mom
+    category: coincident
     source: manual_override
-    series: dram_spot_index
-    unit: usd_per_chip
-    description: DRAMeXchange DDR5 16Gb 스팟 가격 (월말 종가)
+    series: dram_spot_ddr5_mom_pct
+    unit: percent
+    description: |
+      DRAMeXchange DDR5 16Gb 월 평균 스팟 가격의 MoM % 변화.
+      "2개월 연속 하락"은 사용자가 직접 추세 메모(value=단월 MoM, note=직전 월값).
+      AI/HBM 수요 신호와 직접 연결 → coincident로 재분류 (Codex 2026-05-27).
     threshold:
-      red: "2개월 연속 하락"
-      yellow: "1개월 하락"
-      green: "상승 또는 횡보"
+      red: "<= -5"        # MoM -5% 이상 급락
+      yellow: "<= -2"
+      green: ">= 0"
+
+  - id: nvda_customer_concentration
+    category: coincident
+    source: manual_override
+    series: nvda_top_customer_revenue_pct
+    unit: percent
+    description: |
+      NVIDIA 10-K/10-Q customer concentration disclosure에서 top-1 customer가
+      총 매출에서 차지하는 비중. circular revenue 가설의 핵심 지표 — 소수 고객
+      집중도 상승은 vendor financing/related-party 리스크의 직접 signal.
+      Codex 2026-05-27 권고로 신규 추가 (가설의 missing dimension 보완).
+    threshold:
+      red: ">= 25"
+      yellow: ">= 15"
+      green: "< 10"
 
   - id: nvda_data_center_qoq
     category: lagging
@@ -77,5 +101,12 @@ critical_windows:
 
 notes: |
   사용자(김지원)와 Claude의 5/16~5/18 대화를 그대로 인코딩한 검증용 첫 가설.
-  manual_override.yaml에 OpenAI premium·Oracle CDS·DRAM 가격을 사용자가 입력하고,
-  NVDA QoQ만 sec_edgar 자동 추출, hyperscaler 어휘는 Phase 2 NLP 모듈에서 자동화.
+  manual_override에 OpenAI valuation·Oracle bond spread·DRAM MoM·NVDA customer
+  concentration을 사용자가 입력. NVDA QoQ만 sec_edgar 자동 추출, hyperscaler
+  어휘는 Phase 2 NLP 모듈에서 자동화.
+
+  2026-05-27 Codex review 반영:
+  - openai_secondary_premium → openai_implied_valuation_discount (series 재정의)
+  - oracle_cds_5y → oracle_bond_spread_5y (z-score, retail-accessible)
+  - dram_spot_price → dram_spot_price_mom (numeric, coincident로 재분류)
+  - nvda_customer_concentration 신규 추가 (가설의 missing dimension — 트리거 6개)

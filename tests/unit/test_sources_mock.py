@@ -17,6 +17,7 @@ from macro_risk_monitor.schemas import (
 from macro_risk_monitor.sources.base import FetchError, SourceUnavailable
 from macro_risk_monitor.sources.fred import FredSource
 from macro_risk_monitor.sources.manual_override import ManualOverrideSource
+from macro_risk_monitor.sources.registry import get_source
 
 
 def _t(source: SourceKind, series: str) -> Trigger:
@@ -87,3 +88,40 @@ def test_manual_override_missing_key(tmp_path: Path):
     src = ManualOverrideSource(p)
     with pytest.raises(FetchError):
         src.fetch(_t(SourceKind.MANUAL_OVERRIDE, "missing_key"))
+
+
+def test_registry_manual_override_per_thesis(tmp_path: Path, monkeypatch):
+    """registry resolves manual_override to data/manual_override/{thesis_name}.yaml."""
+    import macro_risk_monitor.sources.registry as registry_mod
+
+    monkeypatch.setattr(registry_mod.cfg, "BASE_DIR", tmp_path)
+    get_source.cache_clear()
+
+    thesis_dir = tmp_path / "data" / "manual_override"
+    thesis_dir.mkdir(parents=True)
+    (thesis_dir / "foo_thesis.yaml").write_text(
+        "k1: {value: 42, as_of: 2026-05-26}\n", encoding="utf-8"
+    )
+
+    src = get_source(SourceKind.MANUAL_OVERRIDE, thesis_name="foo_thesis")
+    assert isinstance(src, ManualOverrideSource)
+    assert src.override_path == thesis_dir / "foo_thesis.yaml"
+    reading = src.fetch(_t(SourceKind.MANUAL_OVERRIDE, "k1"))
+    assert reading.value == 42
+
+    # Different thesis_name -> different instance (separate cache entry)
+    (thesis_dir / "bar_thesis.yaml").write_text(
+        "k1: {value: 99, as_of: 2026-05-26}\n", encoding="utf-8"
+    )
+    src2 = get_source(SourceKind.MANUAL_OVERRIDE, thesis_name="bar_thesis")
+    assert src2.override_path == thesis_dir / "bar_thesis.yaml"
+    assert src2 is not src
+
+    get_source.cache_clear()
+
+
+def test_registry_manual_override_requires_thesis_name():
+    get_source.cache_clear()
+    with pytest.raises(SourceUnavailable):
+        get_source(SourceKind.MANUAL_OVERRIDE)
+    get_source.cache_clear()

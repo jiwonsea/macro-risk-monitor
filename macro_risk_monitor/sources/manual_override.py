@@ -2,9 +2,9 @@
 
 For triggers backed by paid data (Bloomberg CDS, Hiive secondary, DRAMeXchange)
 or by qualitative judgement (policy status), the user records the latest
-reading in `data/manual_override.yaml`. The file is gitignored if it
-contains private credentials, but the default template ships with the
-repo.
+reading in a per-thesis YAML under `data/manual_override/{thesis_name}.yaml`
+(e.g. `data/manual_override/ai_circular_revenue.yaml`). registry.get_source
+constructs the path from the Risk.name passed by orchestrator.
 
 YAML shape:
 

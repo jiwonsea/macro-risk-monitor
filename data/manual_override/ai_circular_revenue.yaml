@@ -1,0 +1,54 @@
+# manual_override entries for theses/ai_circular_revenue.yaml
+# 각 key는 trigger.series와 일치해야 한다 (ManualOverrideSource.fetch lookup).
+# value: null = 사용자 입력 필요.
+#
+# 2026-05-27 Codex review 반영으로 series 4개 모두 재정의됨.
+
+openai_implied_valuation_discount_pct:
+  value: null            # percent. 디스카운트면 음수, 프리미엄이면 양수
+  as_of: 2026-05-27
+  source_url: https://www.hiive.com/companies/openai
+  note: |
+    Source: Hiive/Forge/Prism/Premier 헤드라인 indicative price → implied valuation
+            구하고, 직전 primary/tender valuation 대비 ((current - last) / last) * 100
+    부호 규칙: 디스카운트=음수, 프리미엄=양수
+    Cadence: 월 1회
+    Threshold: red <= -10, yellow <= -5, green >= 10 (numeric, 자동 평가)
+    회피: share-class premium 직접 계산 (bid/ask·reference 일관성 부족)
+
+oracle_bond_spread_5y_zscore:
+  value: null            # z-score (rolling 24m)
+  as_of: 2026-05-27
+  source_url: https://www.finra.org/finra-data/fixed-income
+  note: |
+    Source: FINRA TRACE에서 ORCL 5Y benchmark bond yield - 매칭 5Y UST yield
+    계산: 월별 spread bps 시계열을 24m rolling z-score로 표준화. 사용자가
+          매월 1회 직전 24개월 spread 평균·표준편차로 z 계산해서 입력.
+    Cadence: 월 1회 (CDS daily는 retail 부담 + Bloomberg 의존)
+    Threshold: red > 2 (2σ widening), yellow > 1, green < 0.5
+    Codex 2026-05-27 REPLACE — 기존 oracle_cds_5y > 139bps는 cherry-pick 위험 +
+    Bloomberg paid_institutional 의존.
+
+dram_spot_ddr5_mom_pct:
+  value: null            # percent (MoM 단월)
+  as_of: 2026-05-27
+  source_url: https://www.dramexchange.com/
+  note: |
+    Source: DRAMeXchange DDR5 16Gb 스팟 가격 월 평균의 MoM % 변화
+    Cadence: 매월 말일
+    Threshold: red <= -5 (numeric, 자동 평가), yellow <= -2, green >= 0
+    "2개월 연속 하락"은 사용자가 직접 추세 메모 — note에 직전 1~2개월 MoM 값 같이
+    적어두면 LLM이 narrative에서 추세 해석 가능.
+    Codex 2026-05-27: category lagging → coincident 재분류 (AI/HBM 수요 신호와 직접 연결).
+
+nvda_top_customer_revenue_pct:
+  value: null            # percent (NVDA 매출 중 top-1 customer 비중)
+  as_of: 2026-05-27
+  source_url: https://investor.nvidia.com/financial-info/sec-filings/
+  note: |
+    Source: NVDA 10-K/10-Q customer concentration disclosure 섹션. 보통 "one customer
+            accounted for approximately X% of total revenue" 형태로 기재.
+    Cadence: 분기 (10-Q 공시 시점)
+    Threshold: red >= 25, yellow >= 15, green < 10 (numeric, 자동 평가)
+    Codex 2026-05-27 신규 추가 — circular revenue 가설의 missing dimension 보완.
+    소수 고객 집중도 상승 = vendor financing/related-party 리스크의 직접 signal.

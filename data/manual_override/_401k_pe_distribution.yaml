@@ -1,0 +1,82 @@
+# manual_override entries for theses/_401k_pe_distribution.yaml
+# 각 key는 trigger.series와 일치해야 한다.
+# value: null = 사용자 입력 필요.
+#
+# 2026-05-27 Codex review 반영: pe_secondary·ndx_fast_entry threshold 완화,
+# ipo_count_global → us_ipo_count_ttm REPLACE, pe_dpi → pe_aggregate_distributions
+# REPLACE, dc_plan_pe_adoption 신규 추가.
+
+dol_pe_safe_harbor_status:
+  value: null            # categorical string: "not_yet" | "proposed" | "final" | "effective"
+  as_of: 2026-05-27
+  source_url: https://www.federalregister.gov/agencies/employee-benefits-security-administration
+  note: |
+    Source: DOL EBSA 보도자료 + federalregister.gov 검색
+    Cadence: 이벤트 트리거 (월 1회 체크)
+    Threshold qualitative + value categorical → 자동평가 불가, LLM 위임.
+    Codex 2026-05-27 KEEP — 변경 없음. 다만 final/effective만으로 가설 검증은
+    부족, dc_plan_pe_adoption support trigger 함께 봐야.
+
+pe_secondary_discount_pct:
+  value: null            # percent. NAV 대비 → 항상 음수
+  as_of: 2026-05-27
+  source_url: https://www.jefferies.com/our-firm/news-and-research/
+  note: |
+    Source: Jefferies H1/H2 Global Secondary Market Review (PDF), Lazard 분기 노트
+    부호 규칙: NAV 대비 디스카운트 = 음수 (예: -13.0이면 87% NAV)
+    Cadence: 반기 (1월·7월 PDF 공개)
+    Threshold: red <= -20, yellow <= -13, green >= -8 (numeric, 자동 평가)
+    Codex 2026-05-27 threshold 완화 — Jefferies 2025 평균 ~-13% 대비 기존 red <= -25는
+    cherry-pick 위험.
+
+ndx_fast_entry_count_ttm:
+  value: null            # 정수 count (qualifying additions, TTM)
+  as_of: 2026-05-27
+  source_url: https://indexes.nasdaqomx.com/News
+  note: |
+    Source: Nasdaq Index Methodology News + 본인 카운트 (TTM)
+    Cadence: 분기
+    Threshold: red >= 2, yellow >= 1, green "0" (numeric, 자동 평가)
+    Codex 2026-05-27 threshold 완화 — mega-cap IPO 희소성 감안, 기존 red >= 5는
+    사실상 trip 불가.
+    참고: green "0"은 _NUMERIC_PAT 비매칭이지만 value=0일 때 red/yellow 모두 미매칭 →
+          engine/trigger.py:64-74 implicit GREEN 분기로 정상 평가됨.
+
+us_ipo_count_ttm:
+  value: null            # 정수 count
+  as_of: 2026-05-27
+  source_url: https://www.renaissancecapital.com/IPO-Center/Stats
+  note: |
+    Source: Renaissance Capital IPO Center US-only stats (또는 StockAnalysis US IPO list)
+    Cadence: 월 or 분기
+    Threshold: red <= 75, yellow <= 110, green > 150 (numeric, 자동 평가)
+    UNVERIFIED: 사용자가 Renaissance 10y 시계열로 percentile 재보정 필요.
+    위 값은 long-term avg ~150~200 가정 기반 rough rule-of-thumb.
+    Codex 2026-05-27 REPLACE — 기존 global_ipo_count_ttm은 Renaissance free tier가
+    사실상 US-only, "10년 최저권" qualitative threshold도 모호.
+
+pe_aggregate_distributions_pct_nav:
+  value: null            # percent of NAV (aggregate distributions)
+  as_of: 2026-05-27
+  source_url: https://www.bain.com/insights/topics/global-private-equity-report/
+  note: |
+    Source: Bain Global PE Report annual 또는 동급 free benchmark의 aggregate
+            distributions as % of NAV (vintage-별 DPI 아님 — paid_institutional 회피).
+    Cadence: 연간 (Bain은 매년 3월 release)
+    Threshold: red < 5, yellow < 8, green >= 12 (numeric, 자동 평가)
+    UNVERIFIED: % NAV threshold range는 추정. Bain 보고서로 historical percentile 보정 필요.
+    Codex 2026-05-27 REPLACE — 기존 pe_dpi_vintage_2020은 Cambridge/Burgiss
+    paid_institutional 접근 제한, retail-accessible 대안으로 Bain 인용.
+
+dc_plan_pe_adoption_count_ttm:
+  value: null            # 정수 count (recordkeeper/TDF/large DC plan 발표 건수 TTM)
+  as_of: 2026-05-27
+  source_url: https://www.pionline.com/topic/defined-contribution
+  note: |
+    Source: Pensions & Investments, PlanSponsor 뉴스 + 주요 recordkeeper
+            (Vanguard·Fidelity·Empower·Schwab·State Street) 보도자료
+    Cadence: 분기 (이벤트 시 즉시)
+    Threshold: red >= 3, yellow >= 1, green "0" (numeric, 자동 평가)
+    Codex 2026-05-27 신규 추가 — 가설의 핵심 missing dimension. safe harbor 통과만으로는
+    실제 capital adoption 검증 불가. recordkeeper/TDF가 실제 PE allocation 도입해야
+    가설이 작동.

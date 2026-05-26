@@ -28,41 +28,72 @@ triggers:
     source: manual_override
     series: pe_secondary_discount_pct
     unit: percent
-    description: Jefferies·Lazard secondary market 평균 디스카운트 (LP 매도가 / NAV)
+    description: |
+      Jefferies·Lazard secondary market 평균 LP portfolio 디스카운트 (NAV 대비).
+      Codex 2026-05-27 threshold 완화 — 기존 red <= -25는 Jefferies 2025 평균
+      ~87% NAV (= -13%) 대비 너무 극단적, cherry-pick 위험.
     threshold:
-      red: "<= -25"
-      yellow: "<= -15"
-      green: ">= -10"
+      red: "<= -20"
+      yellow: "<= -13"
+      green: ">= -8"
 
   - id: ndx_fast_entry_additions
     category: coincident
     source: manual_override
     series: ndx_fast_entry_count_ttm
-    description: NDX fast-entry 룰로 5거래일 내 편입된 신규 IPO 건수 (TTM)
+    description: |
+      NDX fast-entry 룰로 5거래일 내 편입된 qualifying IPO 건수 (TTM).
+      Codex 2026-05-27 threshold 완화 — mega-cap IPO 희소성 감안, 기존
+      red >= 5는 사실상 trip 불가.
     threshold:
-      red: ">= 5"
-      yellow: ">= 2"
+      red: ">= 2"
+      yellow: ">= 1"
       green: "0"
 
-  - id: ipo_count_global
+  - id: us_ipo_activity
     category: lagging
     source: manual_override
-    series: global_ipo_count_ttm
-    description: 글로벌 IPO 건수 TTM (Renaissance Capital 집계)
+    series: us_ipo_count_ttm
+    description: |
+      미국 IPO 건수 TTM (Renaissance Capital 또는 StockAnalysis 집계).
+      Codex 2026-05-27 REPLACE — 기존 global_ipo_count_ttm은 Renaissance free
+      tier가 사실상 US-only, "10년 최저권" qualitative threshold도 모호.
+      UNVERIFIED: percentile thresholds는 long-term avg ~150~200 가정 기반,
+      사용자가 Renaissance 10y 시계열로 percentile 재보정 필요.
     threshold:
-      red: "10년 최저권"
-      yellow: "10년 평균 -1 sigma"
-      green: 정상
+      red: "<= 75"        # rough 10y 1pct (UNVERIFIED)
+      yellow: "<= 110"    # rough 10y -1σ
+      green: "> 150"
 
-  - id: pe_dpi_vintage_2020
+  - id: pe_aggregate_distributions
     category: lagging
     source: manual_override
-    series: pe_dpi_vintage_2020
-    description: 2020 vintage PE 펀드 DPI (distributed/paid-in)
+    series: pe_aggregate_distributions_pct_nav
+    unit: percent
+    description: |
+      Bain Global PE Report 또는 동급 free benchmark의 aggregate distributions
+      as % of NAV. Codex 2026-05-27 REPLACE — 기존 pe_dpi_vintage_2020은
+      Cambridge/Burgiss paid_institutional 접근 제한, UNVERIFIED 임계치.
+      retail-accessible 대안으로 Bain annual report 인용.
+      UNVERIFIED: % NAV threshold range는 추정. Bain 보고서로 percentile 보정.
     threshold:
-      red: "< 0.3"
-      yellow: "< 0.5"
-      green: ">= 0.7"
+      red: "< 5"
+      yellow: "< 8"
+      green: ">= 12"
+
+  - id: dc_plan_pe_adoption
+    category: coincident
+    source: manual_override
+    series: dc_plan_pe_adoption_count_ttm
+    description: |
+      Major recordkeeper(Vanguard·Fidelity·Empower 등)·TDF suite·대형 DC plan에서
+      private equity allocation 공식 발표/도입 건수 (TTM).
+      Codex 2026-05-27 신규 추가 — 가설의 핵심 missing dimension. safe harbor
+      통과만으로는 가설 검증 불가, 실제 capital adoption이 핵심.
+    threshold:
+      red: ">= 3"
+      yellow: ">= 1"
+      green: "0"
 
 decision_rule: rule_of_three
 
@@ -75,3 +106,12 @@ notes: |
   Phase 1은 manual_override 위주 — DOL·NDX·CRSP 룰 변화는 정성 이벤트가
   많아 자동 fetch 어렵다. Phase 2에서 federalregister.gov API + index
   methodology PDF 자동 파싱으로 격상 가능.
+
+  2026-05-27 Codex review 반영:
+  - pe_secondary_discount: threshold 완화 (-25→-20, -15→-13, -10→-8)
+  - ndx_fast_entry_additions: threshold 완화 (5→2, 2→1)
+  - ipo_count_global → us_ipo_activity (Renaissance US-only, numeric percentile)
+  - pe_dpi_vintage_2020 → pe_aggregate_distributions (Bain retail-accessible)
+  - dc_plan_pe_adoption 신규 추가 (가설 핵심 missing dimension — 트리거 6개)
+  UNVERIFIED 임계치(us_ipo_activity, pe_aggregate_distributions)는 사용자가
+  실제 historical 시계열로 percentile 재보정 필요.

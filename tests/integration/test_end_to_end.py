@@ -44,7 +44,8 @@ def _stub_sources(monkeypatch, tmp_path):
     }
     fake = _FakeSource(values)
     monkeypatch.setattr(
-        "macro_risk_monitor.pipeline.orchestrator.get_source", lambda kind: fake
+        "macro_risk_monitor.pipeline.orchestrator.get_source",
+        lambda kind, thesis_name=None: fake,
     )
     from macro_risk_monitor import config as cfg
 

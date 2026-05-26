@@ -74,7 +74,7 @@ def _fetch_and_evaluate(risk: Risk) -> list[Verdict]:
     verdicts: list[Verdict] = []
     for trigger in risk.triggers:
         try:
-            source = get_source(trigger.source)
+            source = get_source(trigger.source, thesis_name=risk.name)
             reading: Reading | None = source.fetch(trigger)
         except SourceUnavailable as exc:
             logger.warning("source unavailable for %s: %s", trigger.id, exc)
