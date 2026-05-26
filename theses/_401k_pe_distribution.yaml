@@ -1,0 +1,77 @@
+name: _401k_pe_distribution
+title: 401K 대체자산 개방을 통한 PE retail distribution 가설
+created: 2026-05-26
+hypothesis: |
+  PE의 전통 exit 채널(IPO·M&A·dividend recap·secondary)이 고금리로 동시에 좁아진
+  국면에서, 401K(약 $12T)의 PE·crypto 편입 허용은 우연이 아니라 마지막 marginal
+  buyer로의 정치적 동원이다. NDX·CRSP fast entry 룰 + float weighting 변경은
+  pre-IPO holder의 자연스러운 카운터파티를 인덱스 펀드로 만든다.
+
+historical_analogy:
+  - 1980s S&L 디레귤레이션 + LP 세제혜택 상품
+  - 1999~2000 IPO spinning·laddering
+  - Greenwood-Hanson issuer-quality cycle 후기
+
+triggers:
+  - id: dol_safe_harbor_rule
+    category: leading
+    source: manual_override
+    series: dol_pe_safe_harbor_status
+    description: DOL의 401K PE safe harbor 규칙 진행도 (proposed/final/effective)
+    threshold:
+      red: final OR effective
+      yellow: proposed
+      green: not_yet
+
+  - id: pe_secondary_discount
+    category: leading
+    source: manual_override
+    series: pe_secondary_discount_pct
+    unit: percent
+    description: Jefferies·Lazard secondary market 평균 디스카운트 (LP 매도가 / NAV)
+    threshold:
+      red: "<= -25"
+      yellow: "<= -15"
+      green: ">= -10"
+
+  - id: ndx_fast_entry_additions
+    category: coincident
+    source: manual_override
+    series: ndx_fast_entry_count_ttm
+    description: NDX fast-entry 룰로 5거래일 내 편입된 신규 IPO 건수 (TTM)
+    threshold:
+      red: ">= 5"
+      yellow: ">= 2"
+      green: "0"
+
+  - id: ipo_count_global
+    category: lagging
+    source: manual_override
+    series: global_ipo_count_ttm
+    description: 글로벌 IPO 건수 TTM (Renaissance Capital 집계)
+    threshold:
+      red: "10년 최저권"
+      yellow: "10년 평균 -1 sigma"
+      green: 정상
+
+  - id: pe_dpi_vintage_2020
+    category: lagging
+    source: manual_override
+    series: pe_dpi_vintage_2020
+    description: 2020 vintage PE 펀드 DPI (distributed/paid-in)
+    threshold:
+      red: "< 0.3"
+      yellow: "< 0.5"
+      green: ">= 0.7"
+
+decision_rule: rule_of_three
+
+critical_windows:
+  - 2026-03-31      # DOL safe harbor rule 제안
+  - 2026-05-01      # NDX fast entry 룰 적용
+  - 2026-04-27      # CRSP float-adjusted 시총 테스트 적용
+
+notes: |
+  Phase 1은 manual_override 위주 — DOL·NDX·CRSP 룰 변화는 정성 이벤트가
+  많아 자동 fetch 어렵다. Phase 2에서 federalregister.gov API + index
+  methodology PDF 자동 파싱으로 격상 가능.

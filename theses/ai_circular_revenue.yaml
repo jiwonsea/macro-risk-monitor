@@ -1,0 +1,81 @@
+name: ai_circular_revenue
+title: AI 밸류체인 closed-loop revenue 가설
+created: 2026-05-26
+hypothesis: |
+  하단(메모리: Micron·SK하이닉스·Samsung) - 중간(NVIDIA) - 상단(OpenAI·Oracle·MS)
+  사이의 다년 LTA·equity 투자·compute commitment가 외부 end demand의 검증보다 빠르게
+  매출로 인식되며 valuation에 반영되고 있다. 검증 시점(OpenAI 차기 펀딩 또는
+  hyperscaler capex 가이던스)이 가격 inflection의 분기점이 될 수 있다.
+
+historical_analogy:
+  - 1999 Cisco vendor financing
+  - 2000 Lucent-Nortel
+  - Greenwood-Hanson (2013) issuer-quality 후기 국면
+
+triggers:
+  - id: openai_secondary_premium
+    category: leading
+    source: manual_override
+    series: openai_secondary_premium_pct
+    unit: percent
+    description: Hiive·Forge·EquityZen에서 OpenAI Series F 우선주 거래가 / 직전 1차 평가가
+    threshold:
+      red: "<= -10"      # 10%+ 디스카운트
+      yellow: "<= -5"
+      green: ">= 10"
+
+  - id: oracle_cds_5y
+    category: leading
+    source: manual_override
+    series: oracle_cds_5y_bps
+    unit: bps
+    description: Oracle Corp 5년 senior CDS spread (Bloomberg/ICE 인용치)
+    threshold:
+      red: "> 139"        # 2025-12 고점 갱신
+      yellow: "> 100"
+      green: "< 100"
+
+  - id: hyperscaler_capex_tone
+    category: coincident
+    source: earnings_transcript_nlp
+    series: capex_efficiency_terms
+    description: MS·GOOGL·META·AMZN earnings call에서 'rationalize'·'efficiency'·'discipline' 어휘 등장 빈도
+    threshold:
+      red: "2개사 동시 'rationalize' OR 'efficiency'"
+      yellow: "1개사"
+      green: "0개사 (compute-constrained 유지)"
+
+  - id: dram_spot_price
+    category: lagging
+    source: manual_override
+    series: dram_spot_index
+    unit: usd_per_chip
+    description: DRAMeXchange DDR5 16Gb 스팟 가격 (월말 종가)
+    threshold:
+      red: "2개월 연속 하락"
+      yellow: "1개월 하락"
+      green: "상승 또는 횡보"
+
+  - id: nvda_data_center_qoq
+    category: lagging
+    source: sec_edgar
+    series: nvda_dc_segment_revenue_qoq_pct
+    unit: percent
+    description: NVIDIA Data Center 부문 매출 QoQ 성장률 (10-Q segment 기준)
+    threshold:
+      red: "<= 0"
+      yellow: "<= 5"
+      green: "> 10"
+
+decision_rule: rule_of_three
+
+critical_windows:
+  - 2026-05-28      # NVDA FY27 Q1
+  - 2026-06-01      # ORCL FY26 Q4
+  - 2026-07-25      # MSFT / GOOGL / META / AMZN 일제 실적
+  - 2026-08-28      # NVDA FY27 Q2
+
+notes: |
+  사용자(김지원)와 Claude의 5/16~5/18 대화를 그대로 인코딩한 검증용 첫 가설.
+  manual_override.yaml에 OpenAI premium·Oracle CDS·DRAM 가격을 사용자가 입력하고,
+  NVDA QoQ만 sec_edgar 자동 추출, hyperscaler 어휘는 Phase 2 NLP 모듈에서 자동화.

@@ -1,0 +1,32 @@
+<table>
+  <thead>
+    <tr>
+      <th>Trigger</th>
+      <th>Category</th>
+      <th>Status</th>
+      <th>Value</th>
+      <th>As of</th>
+      <th>Threshold (RED)</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>
+        <strong>{{ row.id }}</strong>
+        {% if row.description %}<br><span style="color: #4a5568; font-size: 9pt;">{{ row.description }}</span>{% endif %}
+      </td>
+      <td><span class="category-{{ row.category }}">{{ row.category }}</span></td>
+      <td><span class="status-cell status-{{ row.status }}">{{ row.status }}</span></td>
+      <td>{{ row.value if row.value is not none else "—" }}{% if row.unit %} {{ row.unit }}{% endif %}</td>
+      <td>{{ row.as_of or "—" }}</td>
+      <td><code>{{ row.threshold_red or "—" }}</code></td>
+      <td>
+        {% if row.source_url %}<a href="{{ row.source_url }}">{{ row.source }}</a>
+        {% else %}{{ row.source }}{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

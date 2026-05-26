@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ report.risk.title }}</title>
+  <style>{{ css_inline | safe }}</style>
+</head>
+<body>
+  <div class="container">
+    {% block body %}{% endblock %}
+  </div>
+</body>
+</html>
