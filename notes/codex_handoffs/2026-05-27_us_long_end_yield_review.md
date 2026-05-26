@@ -1,10 +1,9 @@
-# Codex review handoff - {{ risk.name }}
+# Codex review handoff - us_long_end_yield
 
-**Date**: {{ today.isoformat() }}
-**Project**: `{{ project_root }}`
-**Thesis**: `{{ risk.name }}`
-{% if override_data %}**Override file**: `{{ override_path }}`{% else %}**Override file**: none — all triggers auto-fetched{% endif %}
-
+**Date**: 2026-05-27
+**Project**: `F:\dev\Portfolio\macro-risk-monitor`
+**Thesis**: `us_long_end_yield`
+**Override file**: none — all triggers auto-fetched
 
 ---
 
@@ -14,37 +13,31 @@ Review this thesis' trigger design for data existence, retail accessibility, cad
 
 ## 1. Context
 
-- Title: {{ risk.title }}
-- Decision rule: `{{ risk.decision_rule }}`
-- Critical windows: {% for d in risk.critical_windows %}`{{ d.isoformat() }}`{% if not loop.last %}, {% endif %}{% endfor %}
-
+- Title: 미국 장기국채 수익률 상승의 capital market spillover 가설
+- Decision rule: `rule_of_three`
+- Critical windows: `2026-06-12`, `2026-07-30`, `2026-08-15`
 
 ## 2. Hypothesis
 
-{{ risk.hypothesis }}
+이란 갈등 장기화에 따른 유가·인플레이션 압력 + 영국 길트 spillover로
+US 10Y 4.5%, 30Y 5%대가 정착하면, 모기지·IG 회사채 spillover로 가계·기업
+자본 조달 비용이 상승해 자본시장 전반에 유동성 제약·하방 압력이 작용한다.
+Term premium 재가격이 본질이며 지정학·정치 이벤트는 catalyst.
+
 
 ## 3. Trigger Table
 
 | # | id | series | source | category | threshold |
 |---|---|---|---|---|---|
-{% for t in risk.triggers -%}
-| {{ loop.index }} | `{{ t.id }}` | `{{ t.series or "" }}` | `{{ t.source.value }}` | `{{ t.category.value }}` | red=`{{ t.threshold.red or "" }}`, yellow=`{{ t.threshold.yellow or "" }}`, green=`{{ t.threshold.green or "" }}` |
-{% endfor %}
+| 1 | `ust_10y_yield` | `DGS10` | `fred` | `leading` | red=`>= 4.5`, yellow=`>= 4.2`, green=`< 4.0` |
+| 2 | `ust_30y_yield` | `DGS30` | `fred` | `leading` | red=`>= 5.0`, yellow=`>= 4.7`, green=`< 4.5` |
+| 3 | `mortgage_30y_rate` | `MORTGAGE30US` | `fred` | `coincident` | red=`>= 7.5`, yellow=`>= 7.0`, green=`< 6.5` |
+| 4 | `ig_corp_spread` | `BAMLC0A0CM` | `fred` | `coincident` | red=`>= 150`, yellow=`>= 120`, green=`< 100` |
+| 5 | `vix` | `^VIX` | `yfinance` | `lagging` | red=`>= 25`, yellow=`>= 20`, green=`< 18` |
 
 ## 4. Manual Override Entries
 
-{% if override_data %}
-```yaml
-{% for key, value in override_data.items() -%}
-{{ key }}:
-  value: {{ "null" if value is mapping and value.get("value") is none else value.get("value") if value is mapping else "" }}
-  as_of: {{ "null" if value is mapping and value.get("as_of") is none else value.get("as_of") if value is mapping else "" }}
-  source_url: {{ "null" if value is mapping and value.get("source_url") is none else value.get("source_url") if value is mapping else "" }}
-{% endfor -%}
-```
-{% else %}
 None — every trigger above is fetched automatically (fred / yfinance / sec_edgar). The reviewer should focus on threshold realism, category fit, and falsifiability rather than data accessibility.
-{% endif %}
 
 ## 5. Review Dimensions
 
@@ -64,9 +57,9 @@ First provide a concise markdown verdict table. Then include this fenced JSON bl
 
 ```patch
 {
-  "thesis_name": "{{ risk.name }}",
+  "thesis_name": "us_long_end_yield",
   "reviewer": "codex",
-  "review_date": "{{ today.isoformat() }}",
+  "review_date": "2026-05-27",
   "entries": [
     {
       "target_id": "existing_trigger_id",
