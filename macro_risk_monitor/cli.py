@@ -23,7 +23,10 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from . import config as cfg
+from .ai.patch import apply_patch, dump_patch, load_patch, render_diff
 from .ai.risk_parser import parse_risk
+from .ai.review_parser import parse_feedback
+from .ai.reviewer import write_review_handoff
 from .engine.hypothesis import load_risk
 from .output.pdf import html_to_pdf
 from .pipeline import run_pipeline
@@ -53,6 +56,17 @@ def main(argv: list[str] | None = None) -> int:
     p_pdf.add_argument("html_path", type=Path)
     p_pdf.add_argument("--output", type=Path, default=None)
 
+    p_review = sub.add_parser("review-thesis", help="generate a thesis review handoff")
+    p_review.add_argument("name", help="thesis name, e.g. ai_circular_revenue")
+    p_review.add_argument("--out-dir", type=Path, default=Path("notes/codex_handoffs"))
+
+    p_apply = sub.add_parser("apply-review", help="parse review feedback and render/apply a patch")
+    p_apply.add_argument("name", help="thesis name, e.g. ai_circular_revenue")
+    src = p_apply.add_mutually_exclusive_group(required=True)
+    src.add_argument("--feedback", type=Path, help="review feedback markdown")
+    src.add_argument("--patch", type=Path, help="staged review patch YAML")
+    p_apply.add_argument("--apply", action="store_true", help="write changes instead of dry-run diff")
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -61,6 +75,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_analyze(args)
     if args.command == "pdf":
         return _cmd_pdf(args)
+    if args.command == "review-thesis":
+        return _cmd_review_thesis(args)
+    if args.command == "apply-review":
+        return _cmd_apply_review(args)
     parser.error("unreachable")
     return 2
 
@@ -108,6 +126,46 @@ def _cmd_pdf(args: argparse.Namespace) -> int:
         print("PDF render failed (Chrome unavailable?)", file=sys.stderr)
         return 1
     print(f"pdf: {pdf}")
+    return 0
+
+
+def _cmd_review_thesis(args: argparse.Namespace) -> int:
+    path = write_review_handoff(args.name, args.out_dir)
+    print(f"Generated: {path.relative_to(cfg.BASE_DIR)}")
+    print("Next: paste this file to Codex, save reply as")
+    print(f"      notes/codex_handoffs/{path.stem}_feedback.md")
+    return 0
+
+
+def _cmd_apply_review(args: argparse.Namespace) -> int:
+    risk_path = cfg.THESES_DIR / f"{args.name}.yaml"
+    override_path = cfg.BASE_DIR / "data" / "manual_override" / f"{args.name}.yaml"
+    if args.patch:
+        patch = load_patch(args.patch)
+        patch_path = args.patch
+    else:
+        md_text = args.feedback.read_text(encoding="utf-8")
+        patch = parse_feedback(md_text, args.name)
+        patch_path = (
+            cfg.BASE_DIR
+            / "notes"
+            / "codex_handoffs"
+            / f"{patch.review_date.isoformat()}_{args.name}_review_patch.yaml"
+        )
+        dump_patch(patch, patch_path)
+
+    risk_diff, override_diff = render_diff(patch, risk_path, override_path)
+    print(f"=== diff: {risk_path.relative_to(cfg.BASE_DIR)} ===")
+    print(risk_diff or "(no changes)")
+    print(f"=== diff: {override_path.relative_to(cfg.BASE_DIR)} ===")
+    print(override_diff or "(no changes)")
+
+    if args.apply:
+        apply_patch(patch, risk_path, override_path)
+        print(f"Applied patch: {patch_path.relative_to(cfg.BASE_DIR)}")
+    else:
+        print(f"Patch staged at: {patch_path.relative_to(cfg.BASE_DIR)}")
+        print("Re-run with --apply to write changes.")
     return 0
 
 

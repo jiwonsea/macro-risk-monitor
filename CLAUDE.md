@@ -32,6 +32,15 @@
 - **UNVERIFIED 임계치 2개**: `us_ipo_count_ttm`, `pe_aggregate_distributions_pct_nav` — 사용자가 실제 historical 시계열로 percentile 재보정 필요. note에 명시.
 - 코드/테스트 변경 없음. yaml 4개 + 본 로그만 수정. 모든 source는 manual_override 유지 (자동화는 Phase 2b — federal_register API + LLM-assisted CLI).
 
+### 2026-05-27 — review-thesis / apply-review CLI 추가 (multi-model orchestration brick)
+- 위 trigger validity review 흐름(수동 핸드오프 → Codex feedback → 사용자가 YAML 직접 수정)을 두 신규 서브커맨드로 codify:
+  - `macro-risk review-thesis <name>` — thesis + manual_override YAML을 Jinja2 템플릿에 주입해 표준 핸드오프 markdown을 `notes/codex_handoffs/{date}_{name}_review.md`로 자동 생성.
+  - `macro-risk apply-review <name> --feedback <path>` — feedback markdown 파싱 → `ReviewPatch` → unified diff (dry-run) + staging file 저장. `--apply` 추가 시 ruamel.yaml round-trip으로 thesis·override YAML 양쪽에 반영, 이후 `load_risk()` Pydantic 재검증; 실패 시 원본 자동 복원.
+- **Parser는 2-tier 고정**: (1) fenced ```patch JSON block 정규식 탐지 → `ReviewPatch.model_validate`, (2) 실패 시 anthropic SDK fallback. **thesis-specific hardcoded extraction 금지** — 1차 Codex 구현이 `_extract_table_stub`에 reference feedback의 결론(REPLACE 4건)을 키워드 매칭으로 박아넣어 self-validating fake test를 만들었음. fix 핸드오프로 제거. 새 가설마다 cheat 코드를 추가하는 흐름은 reproducibility를 깨뜨림.
+- 핸드오프 템플릿 `## 6. Required Output` 섹션이 reviewer에게 ```patch JSON block 출력을 명시 요구 → 파싱 deterministic + LLM fallback 비용 ~$0.
+- **ruamel.yaml `typ="rt"` representer 보강**: 기본 동작은 None을 empty scalar(`value:`)로 dump해 기존 `value: null` 라인이 git diff에 정규화 노이즈로 잡힘 (override dict가 ADD로 mutate되면 전체 재출력 되기 때문). `add_representer(type(None), ...)`로 명시 `null` 강제 (`patch.py:_yaml`).
+- 새 가설 review 흐름: `review-thesis` → Codex paste → feedback.md 저장 → `apply-review --feedback` (dry-run) → `--apply` 또는 staging YAML 수정 후 `--patch <file> --apply`.
+
 ### 2026-05-26 — LLM 비용 재산정 (Codex cross-check)
 - 초기 비용 추정이 거의 모든 항목에서 틀렸음을 Codex 검증으로 확인. 정정 사항:
   - **입력 토큰**: 가설당 30k 추정 → 실측 ~1.5k. Reading 객체에서 `value/as_of/source_url/rationale`만 prompt JSON에 포함 (raw 전체 아님).
@@ -46,6 +55,7 @@
 - 새 가설 추가 시 `theses/{name}.yaml` + `tests/unit/test_hypothesis_loader.py` 파라미터에 한 줄 추가. manual_override 트리거를 포함하면 `data/manual_override/{name}.yaml`도 함께 생성 (`Risk.name`과 파일 stem 일치).
 - 새 소스 추가 시 `sources/{name}.py` + `SourceKind` enum 갱신 + `sources/registry.py` 분기 추가 + `tests/unit/test_sources_mock.py` 보강.
 - 임계치 비교식 신규 연산자(`==`, 범위 등) 추가 시 `engine/trigger.py` 정규식 + `tests/unit/test_trigger.py` 케이스 동시 추가.
+- 외부 reviewer 핸드오프 파일은 `notes/codex_handoffs/{date}_{thesis}_review.md` (기본 reviewer=codex), feedback은 `..._review_feedback.md`, staged patch는 `..._review_patch.yaml`. 여러 reviewer를 비교할 때만 `{date}_{thesis}_{reviewer}_review.md`로 분기.
 
 ## Known gotchas
 
@@ -53,6 +63,7 @@
 - `config.py`가 패키지 내부에 있으므로 `BASE_DIR`는 `__file__.resolve().parent.parent` — 프로젝트 루트가 아닌 패키지 디렉토리를 가리키지 않게 주의.
 - Chrome 미설치 환경에서 `output/pdf.py`는 None 반환하고 silently 넘어감 — CI에서는 PDF 단계 스킵.
 - yfinance·anthropic·matplotlib은 optional extras. orchestrator가 ImportError 시 graceful degrade하므로, 새 모듈 추가할 때도 동일 패턴(try/except ImportError → 폴백) 유지.
+- ruamel.yaml `typ="rt"` 기본 dump는 None을 빈 스칼라로 출력 → 기존 `value: null` 라인이 mutation 시 `value:`로 정규화되어 git diff 노이즈 발생. `ai/patch.py:_yaml`이 `add_representer(type(None), ...)`로 `null` 명시 강제. 다른 ruamel 사용처를 추가하면 같은 representer를 등록할 것.
 
 ## Phase 2 backlog
 

@@ -39,6 +39,15 @@ class SourceKind(str, Enum):
     EARNINGS_TRANSCRIPT_NLP = "earnings_transcript_nlp"
 
 
+class PatchAction(str, Enum):
+    KEEP = "KEEP"
+    MODIFY_THRESHOLD = "MODIFY-threshold"
+    MODIFY_CATEGORY = "MODIFY-category"
+    MODIFY_SOURCE = "MODIFY-source"
+    REPLACE = "REPLACE"
+    ADD = "ADD"
+
+
 # ---------------------------------------------------------------------------
 # Trigger / Reading / Verdict
 # ---------------------------------------------------------------------------
@@ -59,6 +68,28 @@ class Trigger(BaseModel):
     unit: str | None = None
     description: str | None = None
     threshold: Threshold
+
+
+class PatchEntry(BaseModel):
+    target_id: str
+    action: PatchAction
+    new_id: str | None = None
+    new_series: str | None = None
+    new_category: Category | None = None
+    new_source: SourceKind | None = None
+    new_threshold: Threshold | None = None
+    new_description: str | None = None
+    new_unit: str | None = None
+    new_override: dict[str, Any] | None = None
+    rationale: str = ""
+    unverified: bool = False
+
+
+class ReviewPatch(BaseModel):
+    thesis_name: str
+    reviewer: str = "codex"
+    review_date: date
+    entries: list[PatchEntry]
 
 
 class Reading(BaseModel):

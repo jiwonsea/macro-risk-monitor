@@ -112,3 +112,44 @@ RISK_PARSER_SYSTEM = """역할: 사용자가 자연어로 제시한 거시 리�
 
 def build_risk_parser_user_message(natural_language: str) -> str:
     return f"리스크 한 줄: {natural_language}\n\n위 스키마에 맞게 JSON만 출력하라."
+REVIEWER_PARSER_SYSTEM = """Role: convert reviewer feedback markdown into a ReviewPatch JSON object.
+
+Rules:
+- Output valid JSON only. Do not wrap it in markdown.
+- Preserve the thesis_name requested by the user.
+- Use only these actions: KEEP, MODIFY-threshold, MODIFY-category, MODIFY-source, REPLACE, ADD.
+- Mark entries unverified=true when the feedback says UNVERIFIED or asks for human validation.
+- For threshold changes, emit new_threshold with red/yellow/green string fields.
+- For manual override changes, emit new_override with value/as_of/source_url/note keys when available.
+"""
+
+
+def build_review_parser_user_message(md_text: str, thesis_name: str) -> str:
+    return (
+        "Extract one ReviewPatch for thesis_name="
+        f"{json.dumps(thesis_name, ensure_ascii=False)} from this markdown.\n\n"
+        "Required JSON schema shape:\n"
+        "{\n"
+        '  "thesis_name": "name",\n'
+        '  "reviewer": "codex",\n'
+        '  "review_date": "YYYY-MM-DD",\n'
+        '  "entries": [\n'
+        "    {\n"
+        '      "target_id": "existing_or_new_trigger_id",\n'
+        '      "action": "REPLACE",\n'
+        '      "new_id": "optional_new_trigger_id",\n'
+        '      "new_series": "optional_series",\n'
+        '      "new_category": "leading|coincident|lagging",\n'
+        '      "new_source": "manual_override|fred|yfinance|sec_edgar|news_rss|earnings_transcript_nlp",\n'
+        '      "new_threshold": {"red": ">= 1", "yellow": ">= 0.5", "green": "< 0.5"},\n'
+        '      "new_description": "optional description",\n'
+        '      "new_unit": "optional unit",\n'
+        '      "new_override": {"value": null, "as_of": "YYYY-MM-DD", "source_url": "https://...", "note": "..."},\n'
+        '      "rationale": "short reason",\n'
+        '      "unverified": false\n'
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        "Markdown feedback:\n"
+        f"{md_text}"
+    )

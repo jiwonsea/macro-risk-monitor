@@ -1,0 +1,83 @@
+# Codex review handoff - {{ risk.name }}
+
+**Date**: {{ today.isoformat() }}
+**Project**: `{{ project_root }}`
+**Thesis**: `{{ risk.name }}`
+**Override file**: `{{ override_path }}`
+
+---
+
+## 0. Purpose
+
+Review this thesis' trigger design for data existence, retail accessibility, cadence, threshold quality, category fit, and falsifiability. Flag uncertain historical claims as `UNVERIFIED: <reason>`.
+
+## 1. Context
+
+- Title: {{ risk.title }}
+- Decision rule: `{{ risk.decision_rule }}`
+- Critical windows: {% for d in risk.critical_windows %}`{{ d.isoformat() }}`{% if not loop.last %}, {% endif %}{% endfor %}
+
+
+## 2. Hypothesis
+
+{{ risk.hypothesis }}
+
+## 3. Trigger Table
+
+| # | id | series | source | category | threshold |
+|---|---|---|---|---|---|
+{% for t in risk.triggers -%}
+| {{ loop.index }} | `{{ t.id }}` | `{{ t.series or "" }}` | `{{ t.source.value }}` | `{{ t.category.value }}` | red=`{{ t.threshold.red or "" }}`, yellow=`{{ t.threshold.yellow or "" }}`, green=`{{ t.threshold.green or "" }}` |
+{% endfor %}
+
+## 4. Manual Override Entries
+
+```yaml
+{% for key, value in override_data.items() -%}
+{{ key }}:
+  value: {{ "null" if value is mapping and value.get("value") is none else value.get("value") if value is mapping else "" }}
+  as_of: {{ "null" if value is mapping and value.get("as_of") is none else value.get("as_of") if value is mapping else "" }}
+  source_url: {{ "null" if value is mapping and value.get("source_url") is none else value.get("source_url") if value is mapping else "" }}
+{% endfor -%}
+```
+
+## 5. Review Dimensions
+
+For each trigger, evaluate:
+
+1. Data existence: does the series actually exist?
+2. Access: `free`, `signup_free`, `paid_individual`, `paid_institutional`, `private`, or `unknown`.
+3. Cadence: does the data update cadence fit monthly manual operation?
+4. Threshold quality: is it historically defensible or cherry-picked?
+5. Category fit: leading/coincident/lagging.
+6. Better source: propose retail-accessible alternatives where needed.
+7. Verdict: `KEEP`, `MODIFY-source`, `MODIFY-threshold`, `MODIFY-category`, `REPLACE`, or `ADD`.
+
+## 6. Required Output
+
+First provide a concise markdown verdict table. Then include this fenced JSON block exactly so `macro-risk apply-review` can parse it:
+
+```patch
+{
+  "thesis_name": "{{ risk.name }}",
+  "reviewer": "codex",
+  "review_date": "{{ today.isoformat() }}",
+  "entries": [
+    {
+      "target_id": "existing_trigger_id",
+      "action": "MODIFY-threshold",
+      "new_threshold": {"red": ">= 1", "yellow": ">= 0.5", "green": "< 0.5"},
+      "rationale": "short reason",
+      "unverified": false
+    }
+  ]
+}
+```
+
+Use `ADD` with `target_id` set to the new trigger id. For `REPLACE`, set `target_id` to the existing id and `new_id` to the replacement id.
+
+## 7. Notes
+
+- Prefer retail-accessible sources.
+- Do not reject the thesis itself; focus on trigger design.
+- If a trigger cannot be validated, mark it `unverified: true` instead of inventing a number.
