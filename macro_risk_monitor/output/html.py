@@ -66,13 +66,24 @@ def _build_table_rows(report: Report) -> list[dict]:
                 "value": _format_value(display_value),
                 "unit": (t.unit if t else None),
                 "as_of": (v.reading.as_of.isoformat() if v.reading and v.reading.as_of else None),
-                "threshold_red": (t.threshold.red if t else None),
+                "thresholds": _format_thresholds(t.threshold) if t else None,
                 "source": (t.source.value if t else "—"),
                 "source_url": v.reading.source_url if v.reading else None,
                 "description": (t.description if t else None),
             }
         )
     return rows
+
+
+def _format_thresholds(threshold) -> str:
+    parts = []
+    if threshold.red:
+        parts.append(f"R {threshold.red}")
+    if threshold.yellow:
+        parts.append(f"Y {threshold.yellow}")
+    if threshold.green:
+        parts.append(f"G {threshold.green}")
+    return " / ".join(parts) if parts else "—"
 
 
 def _format_value(value):
