@@ -97,6 +97,7 @@ class Reading(BaseModel):
 
     trigger_id: str
     value: float | str | None
+    display_value: float | str | None = None
     as_of: date | None = None
     source_url: str | None = None
     raw: dict[str, Any] | None = None   # original payload for verifier
@@ -119,6 +120,15 @@ class Verdict(BaseModel):
 # ---------------------------------------------------------------------------
 # Risk (Hypothesis)
 # ---------------------------------------------------------------------------
+class CriticalWindow(BaseModel):
+    date: date
+    event: str = "(unspecified)"
+    rationale: str | None = None
+
+    def isoformat(self) -> str:
+        return self.date.isoformat()
+
+
 class Risk(BaseModel):
     """A macro risk or hypothesis with associated triggers and decision rule.
 
@@ -132,8 +142,27 @@ class Risk(BaseModel):
     historical_analogy: list[str] = Field(default_factory=list)
     triggers: list[Trigger]
     decision_rule: Literal["rule_of_three"] = "rule_of_three"
-    critical_windows: list[date] = Field(default_factory=list)
+    critical_windows: list[CriticalWindow] = Field(default_factory=list)
     notes: str | None = None
+
+    @field_validator("critical_windows", mode="before")
+    @classmethod
+    def _normalize_critical_windows(cls, v: Any) -> Any:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            return v
+        normalized: list[Any] = []
+        for item in v:
+            if isinstance(item, CriticalWindow):
+                normalized.append(item)
+            elif isinstance(item, dict):
+                normalized.append(item)
+            else:
+                normalized.append(
+                    {"date": item, "event": "(unspecified)", "rationale": None}
+                )
+        return normalized
 
     @field_validator("triggers")
     @classmethod

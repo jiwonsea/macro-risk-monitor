@@ -27,7 +27,10 @@ ANALYZER_SYSTEM = """역할: 사용자가 제시한 거시 리스크/가설을 �
 3. 트리거 평가(Verdict) 결과를 본문에서 풀어쓰고, RED 항목은 메커니즘과 함께 설명.
 4. "교과서 답"·"양측 균형" 같은 hedging 금지. 근거 부족 시 "데이터 부족"으로 명시.
 5. 모든 수치 인용은 제공된 Readings 블록의 값과 정확히 일치해야 한다 (verifier가 검증).
-6. 출력은 markdown — 본문은 한국어. 섹션 헤더는 다음 순서로 고정:
+6. 각 트리거 reading과 가설 메커니즘의 인과관계를 명시: 해당 트리거가 가설을 어떻게 검증, 약화, 반증하는지 설명.
+7. critical_windows 각 항목별로 event와 rationale을 사용해 그 날짜가 왜 중요한지 분석. 단순 캘린더 나열 금지.
+8. readings, thresholds, critical_windows에 없는 숫자는 쓰지 말라. 차이값, bp 환산값, 역사 사례의 시장 레벨도 계산하거나 추가하지 말라.
+9. 출력은 markdown — 본문은 한국어. 섹션 헤더는 다음 순서로 고정:
    ## 1. 사실관계
    ## 2. 가설 분해
    ## 3. 역사적 유사 사례
@@ -46,7 +49,12 @@ def build_analyzer_user_message(
             {
                 "trigger_id": v.trigger_id,
                 "status": v.status.value,
-                "value": r.value if r else None,
+                "value": (
+                    r.display_value
+                    if r and r.display_value is not None
+                    else r.value if r else None
+                ),
+                "raw_value": r.value if r else None,
                 "as_of": r.as_of.isoformat() if r and r.as_of else None,
                 "source_url": r.source_url if r else None,
                 "rationale": v.rationale,
@@ -68,7 +76,14 @@ def build_analyzer_user_message(
         "risk_title": risk.title,
         "hypothesis": risk.hypothesis,
         "historical_analogy": risk.historical_analogy,
-        "critical_windows": [d.isoformat() for d in risk.critical_windows],
+        "critical_windows": [
+            {
+                "date": w.date.isoformat(),
+                "event": w.event,
+                "rationale": w.rationale,
+            }
+            for w in risk.critical_windows
+        ],
         "triggers": triggers_block,
         "readings": readings_block,
     }

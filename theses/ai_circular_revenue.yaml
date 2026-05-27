@@ -94,10 +94,18 @@ triggers:
 decision_rule: rule_of_three
 
 critical_windows:
-  - 2026-05-28      # NVDA FY27 Q1
-  - 2026-06-01      # ORCL FY26 Q4
-  - 2026-07-25      # MSFT / GOOGL / META / AMZN 일제 실적
-  - 2026-08-28      # NVDA FY27 Q2
+  - date: 2026-05-28
+    event: NVDA FY27 Q1
+    rationale: Data-center revenue and customer concentration can confirm or weaken circular demand.
+  - date: 2026-06-01
+    event: ORCL FY26 Q4
+    rationale: Oracle financing, backlog, and capex commentary are central to AI commitment quality.
+  - date: 2026-07-25
+    event: MSFT / GOOGL / META / AMZN earnings window
+    rationale: Hyperscaler capex discipline can reveal whether AI demand is broad or vendor-driven.
+  - date: 2026-08-28
+    event: NVDA FY27 Q2
+    rationale: Sequential data-center growth and disclosure quality are lagging confirmation points.
 
 notes: |
   사용자(김지원)와 Claude의 5/16~5/18 대화를 그대로 인코딩한 검증용 첫 가설.

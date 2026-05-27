@@ -62,3 +62,5 @@ def test_two_red_same_category_counts_once():
     verdicts = [_v("a", Status.RED), _v("b", Status.RED)]
     d = apply_rule_of_three(triggers, verdicts)
     assert d.action == "monitor"  # only one distinct category
+    assert "RED 트리거 2개" in d.summary
+    assert "RED 카테고리 1개" in d.summary

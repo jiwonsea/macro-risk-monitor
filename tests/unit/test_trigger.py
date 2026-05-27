@@ -78,3 +78,36 @@ def test_implicit_green_below_all_tiers():
     trig = _trig(red=">= 5", yellow=">= 4.5")
     v = evaluate(trig, _read(3.0))
     assert v.status is Status.GREEN
+
+
+def test_fred_percent_converts_to_bps_for_threshold_comparison():
+    trig = _trig(red=">= 150", yellow=">= 120")
+    trig.unit = "bps"
+    reading = Reading(
+        trigger_id="t",
+        value=0.74,
+        as_of=date(2026, 5, 26),
+        raw={"fred_units": "percent"},
+    )
+
+    v = evaluate(trig, reading)
+
+    assert v.status is Status.GREEN
+    assert reading.value == 0.74
+    assert reading.display_value == 74
+    assert "value=74" in (v.rationale or "")
+
+
+def test_fred_percent_to_bps_can_cross_small_threshold():
+    trig = _trig(red=">= 0.5")
+    trig.unit = "bps"
+    reading = Reading(
+        trigger_id="t",
+        value=0.74,
+        as_of=date(2026, 5, 26),
+        raw={"fred_units": "percent"},
+    )
+
+    v = evaluate(trig, reading)
+
+    assert v.status is Status.RED

@@ -98,9 +98,15 @@ triggers:
 decision_rule: rule_of_three
 
 critical_windows:
-  - 2026-03-31      # DOL safe harbor rule 제안
-  - 2026-05-01      # NDX fast entry 룰 적용
-  - 2026-04-27      # CRSP float-adjusted 시총 테스트 적용
+  - date: 2026-03-31
+    event: DOL safe harbor rule proposal
+    rationale: Regulatory permission is a leading condition for PE access in defined-contribution plans.
+  - date: 2026-05-01
+    event: NDX fast-entry rule application
+    rationale: Index inclusion mechanics affect late-stage private company exit and distribution incentives.
+  - date: 2026-04-27
+    event: CRSP float-adjusted methodology test
+    rationale: Float treatment can change the marginal buyer base for newly public PE-backed issuers.
 
 notes: |
   Phase 1은 manual_override 위주 — DOL·NDX·CRSP 룰 변화는 정성 이벤트가

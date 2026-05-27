@@ -12,9 +12,13 @@ in the report.
 
 from __future__ import annotations
 
+import logging
 import re
 
 from ..schemas import Reading, Status, Threshold, Trigger, Verdict
+from .units import canonical_unit, convert
+
+logger = logging.getLogger(__name__)
 
 
 class ThresholdParseError(ValueError):
@@ -41,6 +45,24 @@ def evaluate(trigger: Trigger, reading: Reading | None) -> Verdict:
         )
 
     value = reading.value
+    display_value: float | str | None = None
+    if isinstance(value, (int, float)):
+        source_unit = _source_unit(reading)
+        source_canon = canonical_unit(source_unit)
+        target_canon = canonical_unit(trigger.unit)
+        if source_canon and target_canon and source_canon != target_canon:
+            display_value = convert(float(value), source_unit, trigger.unit)
+            value = display_value
+        elif source_unit and trigger.unit and not (source_canon and target_canon):
+            logger.warning(
+                "unit conversion skipped for %s: source=%r target=%r",
+                trigger.id,
+                source_unit,
+                trigger.unit,
+            )
+    if display_value is not None:
+        reading.display_value = display_value
+
     for tier, status in (
         (trigger.threshold.red, Status.RED),
         (trigger.threshold.yellow, Status.YELLOW),
@@ -120,6 +142,12 @@ def _is_numeric_pattern(tier_str: str | None) -> bool:
     if tier_str is None:
         return False
     return bool(_NUMERIC_PAT.match(tier_str) or _RANGE_PAT.match(tier_str))
+
+
+def _source_unit(reading: Reading) -> str | None:
+    if not reading.raw:
+        return None
+    return reading.raw.get("fred_units") or reading.raw.get("unit")
 
 
 __all__ = ["evaluate", "ThresholdParseError", "Threshold"]

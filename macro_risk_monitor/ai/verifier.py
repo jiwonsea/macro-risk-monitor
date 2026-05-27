@@ -39,9 +39,12 @@ def verify_citations(
     for v in verdicts:
         if v.reading and isinstance(v.reading.value, (int, float)):
             grounded_values.add(float(v.reading.value))
+        if v.reading and isinstance(v.reading.display_value, (int, float)):
+            grounded_values.add(float(v.reading.display_value))
     for t in risk.triggers:
         for tier in (t.threshold.red, t.threshold.yellow, t.threshold.green):
             grounded_values.update(_extract_numerics(tier or ""))
+            grounded_values.update(_extract_threshold_numerics(tier or ""))
 
     body = _strip_code_and_headers(markdown)
     tokens = _NUM_TOKEN.findall(body)
@@ -82,6 +85,19 @@ def _extract_numerics(text: str) -> set[float]:
             out.add(float(bare))
         except ValueError:
             continue
+    return out
+
+
+def _extract_threshold_numerics(text: str) -> set[float]:
+    out: set[float] = set()
+    m = _NUMERIC_PAT.match(text)
+    if m:
+        out.add(float(m.group(2)))
+        return out
+    m = _RANGE_PAT.match(text)
+    if m:
+        out.add(float(m.group(1)))
+        out.add(float(m.group(2)))
     return out
 
 

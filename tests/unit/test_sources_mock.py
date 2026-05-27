@@ -58,6 +58,38 @@ def test_fred_uses_cache(tmp_path: Path, monkeypatch):
     assert reading.as_of == date(2026, 5, 15)
 
 
+def test_fred_fetches_series_units(tmp_path: Path, monkeypatch):
+    import macro_risk_monitor.sources.fred as fred_mod
+
+    fred_mod._SERIES_UNITS_CACHE.clear()
+
+    class Resp:
+        ok = True
+        status_code = 200
+        text = ""
+
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, params, timeout):
+        if url == fred_mod.FRED_API_URL:
+            return Resp({"observations": [{"date": "2026-05-15", "value": "0.74"}]})
+        if url == fred_mod.FRED_SERIES_URL:
+            return Resp({"seriess": [{"units_short": "percent"}]})
+        raise AssertionError(url)
+
+    monkeypatch.setattr(fred_mod.requests, "get", fake_get)
+    src = FredSource(api_key="key", cache_dir=tmp_path, cache_ttl_hours=0)
+
+    reading = src.fetch(_t(SourceKind.FRED, "BAMLC0A0CM"), as_of=date(2026, 5, 26))
+
+    assert reading.value == 0.74
+    assert reading.raw["fred_units"] == "percent"
+
+
 def test_fred_raises_when_no_key(tmp_path: Path):
     src = FredSource(api_key=None, cache_dir=tmp_path)
     with pytest.raises(SourceUnavailable):

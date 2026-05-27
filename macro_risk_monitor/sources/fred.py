@@ -22,6 +22,8 @@ from .base import DataSource, FetchError, SourceUnavailable
 logger = logging.getLogger(__name__)
 
 FRED_API_URL = "https://api.stlouisfed.org/fred/series/observations"
+FRED_SERIES_URL = "https://api.stlouisfed.org/fred/series"
+_SERIES_UNITS_CACHE: dict[str, str] = {}
 
 
 class FredSource(DataSource):
@@ -56,12 +58,16 @@ class FredSource(DataSource):
             value: float | None = float(value_str)
         except ValueError:
             value = None
+        raw = {"series": trigger.series, "latest": latest}
+        fred_units = self._fetch_series_units(trigger.series)
+        if fred_units:
+            raw["fred_units"] = fred_units
         return Reading(
             trigger_id=trigger.id,
             value=value,
             as_of=date.fromisoformat(obs_date_str),
             source_url=f"https://fred.stlouisfed.org/series/{trigger.series}",
-            raw={"series": trigger.series, "latest": latest},
+            raw=raw,
         )
 
     def _call_api(self, series_id: str, end: date) -> dict:
@@ -78,6 +84,31 @@ class FredSource(DataSource):
         if not resp.ok:
             raise FetchError(f"FRED {resp.status_code}: {resp.text[:200]}")
         return resp.json()
+
+    def _fetch_series_units(self, series_id: str) -> str | None:
+        if series_id in _SERIES_UNITS_CACHE:
+            return _SERIES_UNITS_CACHE[series_id]
+        params = {
+            "series_id": series_id,
+            "api_key": self.api_key,
+            "file_type": "json",
+        }
+        try:
+            logger.info("FRED metadata fetch series=%s", series_id)
+            resp = requests.get(FRED_SERIES_URL, params=params, timeout=20)
+            if not resp.ok:
+                logger.warning("FRED metadata %s for %s", resp.status_code, series_id)
+                return None
+            series = resp.json().get("seriess", [])
+            if not series:
+                return None
+            units = series[0].get("units_short") or series[0].get("units")
+        except Exception as exc:  # noqa: BLE001 - metadata is best effort
+            logger.warning("FRED metadata fetch failed for %s: %s", series_id, exc)
+            return None
+        if units:
+            _SERIES_UNITS_CACHE[series_id] = units
+        return units
 
     @staticmethod
     def _latest_observation(payload: dict) -> tuple[str, str] | None:

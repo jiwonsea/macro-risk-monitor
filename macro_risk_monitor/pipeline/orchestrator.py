@@ -34,7 +34,10 @@ def run_pipeline(
     decision = apply_rule_of_three(risk.triggers, verdicts)
 
     if skip_llm:
-        analysis_md = "(LLM 분석 건너뜀)"
+        analysis_md = (
+            "(LLM analysis skipped. This report shows quantitative trigger evaluation only. "
+            "Set ANTHROPIC_API_KEY and run without --skip-llm to include analysis.)"
+        )
         llm_model = "skipped"
     else:
         analysis_md, llm_model = analyze(risk, verdicts)

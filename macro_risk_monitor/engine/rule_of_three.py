@@ -18,28 +18,40 @@ def apply_rule_of_three(
     by_id = {t.id: t for t in triggers}
     red_categories: set[Category] = set()
     yellow_categories: set[Category] = set()
+    n_red_triggers = 0
     for v in verdicts:
         trig = by_id.get(v.trigger_id)
         if trig is None:
             continue
         if v.status is Status.RED:
+            n_red_triggers += 1
             red_categories.add(trig.category)
         elif v.status is Status.YELLOW:
             yellow_categories.add(trig.category)
 
     n_red = len(red_categories)
+    category_text = ", ".join(c.value for c in sorted(red_categories, key=lambda c: c.value))
     if n_red >= 3:
         action = "defensive_position"
-        summary = "세 카테고리(leading/coincident/lagging) 모두 RED — 방어 포지션 전환 시점."
+        summary = (
+            f"RED 트리거 {n_red_triggers}개, RED 카테고리 {n_red}개 ({category_text}). "
+            "방어 포지션 전환 시점."
+        )
     elif n_red == 2:
         action = "hedge_increase"
-        summary = "두 카테고리 RED — 헤지 비중 확대 검토."
+        summary = (
+            f"RED 트리거 {n_red_triggers}개, RED 카테고리 {n_red}개 ({category_text}). "
+            "헤지 비중 확대 검토."
+        )
     elif n_red == 1:
         action = "monitor"
-        summary = "한 카테고리 RED — 추가 모니터링 강화."
+        summary = (
+            f"RED 트리거 {n_red_triggers}개, RED 카테고리 {n_red}개 ({category_text}). "
+            "추가 모니터링 강화."
+        )
     else:
         action = "no_signal"
-        summary = "RED 카테고리 없음."
+        summary = "RED 트리거 0개. 활성 시그널 없음."
         if yellow_categories:
             summary += f" YELLOW 카테고리: {sorted(c.value for c in yellow_categories)}."
 

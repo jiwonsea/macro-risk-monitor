@@ -40,6 +40,14 @@ def test_passes_when_only_grounded_numbers_quoted():
     md = "10년물이 4.62%까지 올랐고 임계는 4.5%다."
     check = verify_citations(md, risk, verdicts)
     assert check.passed
+
+
+def test_unitless_threshold_numbers_are_grounded_with_units_in_markdown():
+    risk, verdicts = _risk_and_verdicts()
+    risk.triggers[0].threshold = Threshold(red=">= 150", yellow=">= 120", green="< 100")
+    md = "RED threshold is 150bps and green threshold is 100bp."
+    check = verify_citations(md, risk, verdicts)
+    assert check.passed
     assert check.grounded_count >= 2
 
 

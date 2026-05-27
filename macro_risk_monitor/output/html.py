@@ -25,7 +25,7 @@ def render_report(
 
     rows = _build_table_rows(report)
     trigger_table_html = env.get_template("trigger_table.html.j2").render(rows=rows)
-    chart_section = render_trigger_bar(report.verdicts)
+    chart_section = render_trigger_bar(report.verdicts, {t.id: t for t in report.risk.triggers})
 
     analysis_html = md_lib.markdown(
         report.llm_analysis_md,
@@ -53,12 +53,17 @@ def _build_table_rows(report: Report) -> list[dict]:
     rows: list[dict] = []
     for v in report.verdicts:
         t = trigger_by_id.get(v.trigger_id)
+        display_value = (
+            v.reading.display_value
+            if v.reading and v.reading.display_value is not None
+            else v.reading.value if v.reading else None
+        )
         rows.append(
             {
                 "id": v.trigger_id,
                 "category": (t.category.value if t else "unknown"),
                 "status": v.status.value,
-                "value": v.reading.value if v.reading else None,
+                "value": _format_value(display_value),
                 "unit": (t.unit if t else None),
                 "as_of": (v.reading.as_of.isoformat() if v.reading and v.reading.as_of else None),
                 "threshold_red": (t.threshold.red if t else None),
@@ -68,6 +73,12 @@ def _build_table_rows(report: Report) -> list[dict]:
             }
         )
     return rows
+
+
+def _format_value(value):
+    if isinstance(value, float):
+        return f"{value:g}"
+    return value
 
 
 def default_html_path(risk_name: str, generated_at: datetime | None = None) -> Path:

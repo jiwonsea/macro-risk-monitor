@@ -73,6 +73,9 @@ class AnalyzeStub:
             )
         lines.append("")
         lines.append("## 5. 다음 critical window")
-        for d in risk.critical_windows:
-            lines.append(f"- {d.isoformat()}")
+        for w in risk.critical_windows:
+            detail = f"{w.date.isoformat()} - {w.event}"
+            if w.rationale:
+                detail += f": {w.rationale}"
+            lines.append(f"- {detail}")
         return "\n".join(lines)

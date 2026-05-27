@@ -59,9 +59,10 @@ triggers:
 
   - id: vix
     category: lagging
-    source: yfinance
-    series: ^VIX
-    description: CBOE VIX 변동성 지수 (yfinance)
+    source: fred
+    series: VIXCLS
+    unit: index
+    description: CBOE VIX volatility index (FRED VIXCLS)
     threshold:
       red: ">= 25"
       yellow: ">= 20"
@@ -70,11 +71,17 @@ triggers:
 decision_rule: rule_of_three
 
 critical_windows:
-  - 2026-06-12      # FOMC
-  - 2026-07-30      # FOMC
-  - 2026-08-15      # Treasury refunding announcement
+  - date: 2026-06-12
+    event: FOMC
+    rationale: Policy guidance can reset term-premium and duration-risk pricing.
+  - date: 2026-07-30
+    event: FOMC
+    rationale: Follow-through meeting for inflation, issuance, and long-end yield pressure.
+  - date: 2026-08-15
+    event: Treasury refunding announcement
+    rationale: Coupon issuance mix can directly affect long-end supply and spillover risk.
 
 notes: |
-  이 가설은 FRED·yfinance 두 무료 소스만으로 5개 트리거 자동 평가 가능 —
+  이 가설은 FRED 무료 소스만으로 5개 트리거 자동 평가 가능 —
   Phase 1 end-to-end 검증의 가장 좋은 후보이며 첫 ad-hoc 모드 출력과
   비교 기준선으로도 활용한다.
