@@ -53,6 +53,7 @@
 ## Conventions
 
 - 새 가설 추가 시 `theses/{name}.yaml` + `tests/unit/test_hypothesis_loader.py` 파라미터에 한 줄 추가. manual_override 트리거를 포함하면 `data/manual_override/{name}.yaml`도 함께 생성 (`Risk.name`과 파일 stem 일치).
+- 새 manual_override entry의 초기 `value`는 `null` placeholder — `Reading.value=None` → trigger evaluate가 UNKNOWN 반환하여 `rule_of_three` RED 카운트에서 자연히 제외. 사용자가 실제 값을 채우기 전까지의 의도된 동작.
 - 새 소스 추가 시 `sources/{name}.py` + `SourceKind` enum 갱신 + `sources/registry.py` 분기 추가 + `tests/unit/test_sources_mock.py` 보강.
 - 임계치 비교식 신규 연산자(`==`, 범위 등) 추가 시 `engine/trigger.py` 정규식 + `tests/unit/test_trigger.py` 케이스 동시 추가.
 - 외부 reviewer 핸드오프 파일은 `notes/codex_handoffs/{date}_{thesis}_review.md` (기본 reviewer=codex), feedback은 `..._review_feedback.md`, staged patch는 `..._review_patch.yaml`. 여러 reviewer를 비교할 때만 `{date}_{thesis}_{reviewer}_review.md`로 분기.
@@ -60,6 +61,7 @@
 ## Known gotchas
 
 - `from ..sources import get_source`는 import 시점에 바인딩되므로 테스트에서 monkeypatch 시 `macro_risk_monitor.pipeline.orchestrator.get_source` 경로로 패치해야 한다 (registry 모듈만 패치하면 안 잡힘).
+- `registry.get_source`는 `@lru_cache(maxsize=None)` — 테스트에서 `cfg.BASE_DIR` 등을 monkeypatch한 후 `get_source.cache_clear()` 호출 안 하면 이전 인스턴스가 캐시 hit돼 silent pass.
 - `config.py`가 패키지 내부에 있으므로 `BASE_DIR`는 `__file__.resolve().parent.parent` — 프로젝트 루트가 아닌 패키지 디렉토리를 가리키지 않게 주의.
 - Chrome 미설치 환경에서 `output/pdf.py`는 None 반환하고 silently 넘어감 — CI에서는 PDF 단계 스킵.
 - yfinance·anthropic·matplotlib은 optional extras. orchestrator가 ImportError 시 graceful degrade하므로, 새 모듈 추가할 때도 동일 패턴(try/except ImportError → 폴백) 유지.
