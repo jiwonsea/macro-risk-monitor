@@ -25,7 +25,7 @@ Codex의 사전 학습 지식·일반적인 시장 상식 기준으로 평가. *
 
 - **프로젝트**: macro-risk-monitor (Phase 1 MVP)
 - **경로**: `F:/dev/Portfolio/macro-risk-monitor`
-- **사용자**: 김지원 (한국 retail investor). Bloomberg·FactSet 등 유료 터미널 access 없음. 무료/가입 무료 source 위주.
+- **사용자**: 한국 retail investor. Bloomberg·FactSet 등 유료 터미널 access 없음. 무료/가입 무료 source 위주.
 - **운영 cadence**: 매월 1회 30~60분에 모든 manual_override 갱신 목표.
 - **현재 날짜**: 2026-05-27
 - **decision_rule**: `rule_of_three` — 같은 category(leading/coincident/lagging) 안에서 RED 카운트가 누적되면 단계적 액션(monitor → hedge_increase → defensive_position).
