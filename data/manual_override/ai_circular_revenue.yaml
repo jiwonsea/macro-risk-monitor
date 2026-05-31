@@ -15,13 +15,17 @@ openai_implied_valuation_discount_pct:
     Cadence: 월 1회
     Threshold: red <= -10, yellow <= -5, green >= 10 (numeric, 자동 평가)
     회피: share-class premium 직접 계산 (bid/ask·reference 일관성 부족)
-    2026-05-31 소스 탐색 (값 미입력 — 결정 필요):
-      Hiive Price $695.30 (2026-05-29), Forge Price $733.54 (2026-05-30) — 둘 다 무료 헤드라인.
+    2026-05-31 소스 탐색 (값 미입력 — 데이터 비수렴):
       직전 primary: 2026-03 $122B 라운드, post-money $852B.
-      복수 매체 종합: 세컨더리가 primary 대비 "약 -10%" 거래. 단 플랫폼이 implied
-      valuation을 무료로 미공개(per-share→valuation 변환은 capped-profit 구조라 회피 대상).
-      -10%는 RED 임계선(<= -10) 정확히 위 = 헤드라인 시그널을 켜는 결정값이므로
-      근사치로 자동 입력하지 않음. 사용자가 정밀 implied valuation 확인 후 입력 (UNVERIFIED).
+      가장 깨끗한 secondary implied valuation: Forge Global ~$880B (2026-04-24)
+        → +3.3% 프리미엄 (디스카운트 아님). green 임계(>= 10) 미달, 어느 밴드에도 안 걸림.
+      소스 비수렴: WSJ $6.6B 세컨더리 ~$400B(Oct'25 텐더 재보도, stale),
+        tokenized SPV(PreStocks) 최대 $1.5T(자산 $23M, 무효), per-share도 분산
+        (Nasdaq PM $663.95 5/14 · Hiive $695 5/29 · Forge $733 5/30).
+      이 비수렴이 note의 "bid/ask·reference 일관성 부족" 회피 사유의 실증.
+      2026-05-13 SPV transfer 무효 사건이 토큰 implied·per-share 레퍼런스를 오염.
+      결론: 단일 신뢰값 없음 → value=null 유지. 향후 Forge/Caplight 헤드라인
+        implied valuation이 명확히 디스카운트로 전환될 때 입력 (UNVERIFIED).
 
 oracle_bond_spread_5y_zscore:
   value: null            # z-score (rolling 24m)
