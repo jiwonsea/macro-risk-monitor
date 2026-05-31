@@ -82,7 +82,7 @@ triggers:
 
   - id: nvda_data_center_qoq
     category: lagging
-    source: sec_edgar
+    source: manual_override
     series: nvda_dc_segment_revenue_qoq_pct
     unit: percent
     description: NVIDIA Data Center 부문 매출 QoQ 성장률 (10-Q segment 기준)
@@ -108,10 +108,12 @@ critical_windows:
     rationale: Sequential data-center growth and disclosure quality are lagging confirmation points.
 
 notes: |
-  사용자(김지원)와 Claude의 5/16~5/18 대화를 그대로 인코딩한 검증용 첫 가설.
+  사용자와 Claude의 5/16~5/18 대화를 그대로 인코딩한 검증용 첫 가설.
   manual_override에 OpenAI valuation·Oracle bond spread·DRAM MoM·NVDA customer
-  concentration을 사용자가 입력. NVDA QoQ만 sec_edgar 자동 추출, hyperscaler
-  어휘는 Phase 2 NLP 모듈에서 자동화.
+  concentration·NVDA Data Center QoQ를 사용자가 입력. hyperscaler 어휘는 Phase 2
+  NLP 모듈에서 자동화.
+  2026-05-31: nvda_data_center_qoq를 sec_edgar → manual_override로 정정 (세그먼트
+  매출은 companyfacts XBRL에 표준 concept 부재 — sec_edgar.py docstring 참조).
 
   2026-05-27 Codex review 반영:
   - openai_secondary_premium → openai_implied_valuation_discount (series 재정의)
