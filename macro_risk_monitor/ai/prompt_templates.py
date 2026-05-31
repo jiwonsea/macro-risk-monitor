@@ -168,3 +168,65 @@ def build_review_parser_user_message(md_text: str, thesis_name: str) -> str:
         "Markdown feedback:\n"
         f"{md_text}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Data selection (draft-thesis): Codex critique + Claude repair
+# ---------------------------------------------------------------------------
+# These power ai/data_selector.py. They refine *which series* back each trigger;
+# they never decide thresholds — that stays a user responsibility (see
+# CLAUDE.md invariant "임계치는 사용자 정의").
+
+CODEX_SELECTION_SYSTEM = (
+    "Role: a markets-data reviewer. You are given a macro hypothesis and a set "
+    "of proposed monitoring triggers, each tagged with a data source and series "
+    "id. Judge whether each series is the most appropriate, retail-accessible, "
+    "and falsifiable measurement for what the trigger claims to track.\n\n"
+    "Rules:\n"
+    "- Only use real, currently-published identifiers: FRED series ids (e.g. "
+    "DGS10, BAMLC0A0CM) or Yahoo Finance tickers (e.g. ^VIX, NVDA). Never invent "
+    "an id you are not confident exists. If unsure a free series exists, set "
+    'source to "manual_override" and explain.\n'
+    "- Keep the same trigger ids and the same count. Do not add or drop triggers.\n"
+    "- You may change source/series/unit/description and must give a one-line "
+    "rationale for every change (or for keeping it).\n"
+    "- Do NOT output thresholds; they are out of scope.\n"
+    "- Output exactly one fenced ```json block and nothing else, shaped:\n"
+    '{"triggers": [{"id": "...", "source": "fred|yfinance|manual_override", '
+    '"series": "...", "unit": "...", "description": "...", "rationale": "..."}]}'
+)
+
+
+def build_codex_selection_message(
+    hypothesis: str, triggers: list[dict]
+) -> str:
+    return (
+        CODEX_SELECTION_SYSTEM
+        + "\n\n## Hypothesis\n"
+        + hypothesis.strip()
+        + "\n\n## Proposed triggers\n```json\n"
+        + json.dumps(triggers, ensure_ascii=False, indent=2)
+        + "\n```\n\nReturn the refined triggers as one ```json block."
+    )
+
+
+DATA_REPAIR_SYSTEM = """역할: 자동 검증에서 '존재하지 않거나 불러올 수 없음'으로 판정된 데이터 시리즈를, 같은 개념을 측정하는 실재 시리즈로 교체하는 데이터 큐레이터.
+
+규칙:
+- FRED series id 또는 Yahoo Finance ticker 중 실제로 존재하는 것만 제시. 추측으로 id를 만들지 말 것.
+- fred_candidates가 주어지면 그 안에서 트리거 의미에 가장 맞는 것을 우선 선택. 적절한 후보가 없으면 다른 실재 series를 제시하거나, 무료로 측정 불가하면 source를 "manual_override"로 강등.
+- 임계치(threshold)는 절대 출력하지 말 것 — 범위 밖.
+- 출력은 fenced ```json 블록 하나만:
+{"replacements": [{"id": "원래_트리거_id", "source": "fred|yfinance|manual_override", "series": "교체_series", "rationale": "한 줄 근거"}]}
+"""
+
+
+def build_repair_message(hypothesis: str, unresolved: list[dict]) -> str:
+    return (
+        f"가설: {hypothesis.strip()}\n\n"
+        "아래 트리거들은 자동 검증에서 실패했다(존재하지 않거나 데이터 없음). "
+        "각각을 같은 개념의 실재 series로 교체하라.\n\n"
+        "```json\n"
+        f"{json.dumps(unresolved, ensure_ascii=False, indent=2)}\n"
+        "```\n\n위 스키마대로 ```json 블록 하나만 출력하라."
+    )

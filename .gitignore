@@ -39,3 +39,6 @@ graphify-out/
 
 # Ephemeral staged patches from `macro-risk apply-review` dry-runs
 notes/codex_handoffs/*_review_patch.yaml
+
+# Playwright MCP scratch
+.playwright-mcp/

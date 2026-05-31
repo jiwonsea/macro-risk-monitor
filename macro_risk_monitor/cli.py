@@ -23,6 +23,11 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from . import config as cfg
+from .ai.data_selector import (
+    manual_override_scaffold,
+    select_data,
+    selection_to_payload,
+)
 from .ai.patch import apply_patch, dump_patch, load_patch, render_diff
 from .ai.risk_parser import parse_risk
 from .ai.review_parser import parse_feedback
@@ -30,6 +35,7 @@ from .ai.reviewer import write_review_handoff
 from .engine.hypothesis import load_risk
 from .output.pdf import html_to_pdf
 from .pipeline import run_pipeline
+from .schemas import Risk
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +73,17 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--patch", type=Path, help="staged review patch YAML")
     p_apply.add_argument("--apply", action="store_true", help="write changes instead of dry-run diff")
 
+    p_draft = sub.add_parser(
+        "draft-thesis",
+        help="hypothesis -> auto-select & verify data sources -> thesis YAML",
+    )
+    p_draft.add_argument("hypothesis", help="risk hypothesis in natural language")
+    p_draft.add_argument("--name", default=None, help="thesis name (snake_case); default from LLM draft")
+    p_draft.add_argument("--out", type=Path, default=None, help="output YAML path; default theses/{name}.yaml")
+    p_draft.add_argument("--no-codex", action="store_true", help="skip the Codex multi-model discussion")
+    p_draft.add_argument("--max-repair", type=int, default=3, help="max repair rounds for failed series")
+    p_draft.add_argument("--yes", action="store_true", help="skip interactive confirmation")
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -79,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_review_thesis(args)
     if args.command == "apply-review":
         return _cmd_apply_review(args)
+    if args.command == "draft-thesis":
+        return _cmd_draft_thesis(args)
     parser.error("unreachable")
     return 2
 
@@ -167,6 +186,81 @@ def _cmd_apply_review(args: argparse.Namespace) -> int:
         print(f"Patch staged at: {patch_path.relative_to(cfg.BASE_DIR)}")
         print("Re-run with --apply to write changes.")
     return 0
+
+
+def _cmd_draft_thesis(args: argparse.Namespace) -> int:
+    sel = select_data(
+        args.hypothesis,
+        use_codex=not args.no_codex,
+        max_repair_rounds=args.max_repair,
+    )
+    if args.name:
+        sel.name = args.name
+
+    print(f"Drafted thesis: {sel.name} — {sel.title}")
+    print(f"Codex discussion: {'yes' if sel.codex_used else 'no (skipped/unavailable)'}")
+    print(f"\nResolved triggers ({len(sel.triggers)}):")
+    print(_render_trigger_table(sel))
+
+    ok = sum(1 for t in sel.triggers if t.status == "OK")
+    manual = sum(1 for t in sel.triggers if t.status == "MANUAL")
+    unverified = sum(1 for t in sel.triggers if t.status == "UNVERIFIED")
+    print(f"\n  OK={ok}  MANUAL={manual}  UNVERIFIED={unverified}")
+    print("  Note: thresholds are scaffolded as TBD — set them yourself (LLM does not decide thresholds).")
+
+    payload = selection_to_payload(sel)
+    try:
+        Risk.model_validate(payload)  # fail before writing if the draft is malformed
+    except Exception as exc:  # noqa: BLE001 — surface validation error to the user
+        print(f"\nDraft failed schema validation: {exc}", file=sys.stderr)
+        return 1
+
+    out_path = args.out or cfg.THESES_DIR / f"{sel.name}.yaml"
+    if not args.yes:
+        ans = input(f"\nWrite thesis to {out_path}? [y/N] ").strip().lower()
+        if ans != "y":
+            print("aborted.")
+            return 0
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(payload, fh, allow_unicode=True, sort_keys=False)
+    print(f"wrote: {out_path}")
+
+    scaffold = manual_override_scaffold(sel)
+    if scaffold:
+        ov_path = cfg.BASE_DIR / "data" / "manual_override" / f"{sel.name}.yaml"
+        ov_path.parent.mkdir(parents=True, exist_ok=True)
+        if ov_path.exists():
+            print(f"manual_override file already exists, not overwriting: {ov_path}")
+        else:
+            with ov_path.open("w", encoding="utf-8") as fh:
+                yaml.safe_dump(scaffold, fh, allow_unicode=True, sort_keys=False)
+            print(f"wrote manual_override scaffold ({len(scaffold)} keys): {ov_path}")
+
+    print("\nNext: fill thresholds in the thesis YAML, then run:")
+    print(f"      python -m macro_risk_monitor.cli run {out_path}")
+    return 0
+
+
+def _render_trigger_table(sel) -> str:
+    rows = []
+    for t in sel.triggers:
+        p = t.probe
+        latest = ""
+        if p and p.ok:
+            latest = f"{p.latest_value}"
+            if p.as_of:
+                latest += f" ({p.as_of.isoformat()})"
+        units = (p.units if p and p.units else t.unit) or ""
+        rows.append(
+            f"  [{t.status:<10}] {t.category:<10} {t.source}/{t.series}"
+            f"{('  units=' + units) if units else ''}"
+            f"{('  latest=' + latest) if latest else ''}"
+        )
+        if t.rationale:
+            rows.append(f"               why: {t.rationale}")
+    return "\n".join(rows)
 
 
 def _save_yaml(risk, path: Path) -> None:
