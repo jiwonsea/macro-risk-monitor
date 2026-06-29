@@ -28,6 +28,16 @@ def test_us_long_end_yield_uses_free_sources():
     assert SourceKind.FRED in sources or SourceKind.YFINANCE in sources
 
 
+def test_ai_circular_revenue_wires_news_rss():
+    """news_rss is exercised by a real thesis, not dead code."""
+    risk = load_risk(THESES / "ai_circular_revenue.yaml")
+    news = [t for t in risk.triggers if t.source is SourceKind.NEWS_RSS]
+    assert len(news) == 1
+    trig = news[0]
+    assert trig.series, "news_rss trigger needs a keyword spec in 'series'"
+    assert trig.category.value == "leading"
+
+
 def test_duplicate_trigger_ids_rejected(tmp_path: Path):
     bad = tmp_path / "bad.yaml"
     bad.write_text(

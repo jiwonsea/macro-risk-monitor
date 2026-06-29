@@ -12,6 +12,16 @@
 
 ## Session log
 
+### 2026-06-29 — CI 워크플로 + news_rss 소스 (직전 세션 누락분 소급 기록)
+- `.github/workflows/ci.yml`: push/PR(main)에 `ruff check .` + `pytest` (Python 3.11, mock-only로 키 없이 통과). `concurrency` cancel-in-progress로 중복 run 취소.
+- `sources/news_rss.py` (`NewsRssSource`): RSS 2.0(`<item>`)·Atom(`<entry>`) 키워드 매칭 카운트. stdlib `xml.etree.ElementTree` 파싱 → 추가 의존성 0. `series`가 comma-separated 키워드 spec (OR 매칭, title+summary 대상). 피드별 best-effort — 한 피드 실패는 로그 후 skip, **전체** 실패 시만 `FetchError`. registry `NEWS_RSS` 분기 + config 3종(`NEWS_RSS_FEEDS`/`NEWS_RSS_LOOKBACK_DAYS`/`NEWS_RSS_CACHE_DIR`, `MACRO_RISK_NEWS_*` env override). `SourceKind.NEWS_RSS` enum 슬롯은 기존부터 존재. 테스트 8건.
+- `.gitignore`: `AGENTS.md` / `notes/next_session_prompt.md` 제외 (세션 스크래치, 포트폴리오 비공개).
+
+### 2026-06-29 — news_rss를 실제 가설에 연결 + daily cron/Pages 배포
+- **dead code 해소**: `ai_circular_revenue.yaml`에 `circular_revenue_press_attention`(source=news_rss, leading) 트리거 추가 — 트리거 6→7개. news_rss가 처음으로 실제 가설에서 사용됨. **live 네트워크 의존**(manual_override 아님 → placeholder null 불필요). 임계치 `red>=8 / yellow>=4 / green<2`는 **UNVERIFIED** — 실제 피드 baseline 분포로 percentile 재보정 필요(note 명시).
+- 테스트 85→87: loader에 `test_ai_circular_revenue_wires_news_rss` 1건 + `tests/integration/test_news_rss_e2e.py` 1건. e2e는 **실 registry+orchestrator** 경로를 타고 `requests.get`만 스텁 — recent-dated fixture(today−2일)로 lookback window 안에 항상 들어와 CI 날짜와 무관하게 deterministic(8건 매칭→RED).
+- `.github/workflows/daily.yml`: `cron "0 13 * * *"`(~22:00 KST, US 마감 후) + `workflow_dispatch`. `theses/*.yaml` 순회 → `macro-risk run --output docs/{name}.html` → `upload-pages-artifact`(path: docs) + `deploy-pages`. `permissions: pages:write, id-token:write`, `concurrency group=pages`(cancel-in-progress:false). 키 없을 때 graceful degrade로도 배포: `analyze()`가 키 없으면 stub, source 실패는 UNKNOWN. PDF는 Chrome 부재로 skip(known gotcha).
+
 ### 2026-05-26 — 초기 구축
 - 사용자 5/16~5/18 Claude 대화를 그대로 인코딩한 `theses/ai_circular_revenue.yaml`이 첫 검증 자산. 5개 트리거 × leading/coincident/lagging × 임계치는 사용자 결정값 그대로.
 - 동봉 가설 3개 중 `us_long_end_yield.yaml`만 FRED + yfinance로 100% 자동 fetch 가능. 나머지 두 개는 manual_override 의존도 높음 — Phase 2 NLP·federalregister API 통합 시 자동화 격상 예정.
@@ -66,12 +76,13 @@
 - Chrome 미설치 환경에서 `output/pdf.py`는 None 반환하고 silently 넘어감 — CI에서는 PDF 단계 스킵.
 - yfinance·anthropic·matplotlib은 optional extras. orchestrator가 ImportError 시 graceful degrade하므로, 새 모듈 추가할 때도 동일 패턴(try/except ImportError → 폴백) 유지.
 - ruamel.yaml `typ="rt"` 기본 dump는 None을 빈 스칼라로 출력 → 기존 `value: null` 라인이 mutation 시 `value:`로 정규화되어 git diff 노이즈 발생. `ai/patch.py:_yaml`이 `add_representer(type(None), ...)`로 `null` 명시 강제. 다른 ruamel 사용처를 추가하면 같은 representer를 등록할 것.
+- (Cowork 샌드박스) mount Windows↔Linux 뷰 desync: 한 파일을 Edit/Write 툴(Windows측)과 bash(Linux mount)로 번갈아 쓰면 한쪽이 stale/잘린 채로 보임. 특히 Edit로 테스트 추가 후 pytest가 stale `__pycache__` `.pyc`로 신규 테스트를 미수집할 수 있음. 파일 하나는 한 mechanism으로만 쓸 것. 섞였으면 bash `open(path,"wb")` 전체 재기록으로 수렴하되, **재기록 직전 read가 transient stale view를 잡으면 본문이 잘릴 수 있으니** 재기록 후 반드시 grep/`ast.parse`(Linux) + Read(Windows) 양측 검증. git은 Linux mount 뷰를 커밋한다.
 
 ## Phase 2 backlog
 
-- `sources/news_rss.py` (Bloomberg·Reuters·CNBC) + 키워드 매칭
+- ~~`sources/news_rss.py` (Bloomberg·Reuters·CNBC) + 키워드 매칭~~ ✅ 2026-06-29 (소스 + ai_circular_revenue 연결 완료)
 - `sources/earnings_transcript_nlp.py` (CFO 어휘 변화 자동 탐지)
 - 백테스트: 2024~26 데이터로 ai_circular_revenue 가설 재현 가능성 평가
 - Streamlit 대시보드
-- GitHub Actions daily cron + Slack/이메일 알림
-- GitHub Pages 자동 배포 (포트폴리오 공개 surface)
+- ~~GitHub Actions daily cron~~ ✅ 2026-06-29 (`daily.yml`) + Slack/이메일 알림 (미구현)
+- ~~GitHub Pages 자동 배포 (포트폴리오 공개 surface)~~ ✅ 2026-06-29 (`daily.yml` → docs/ Pages)
