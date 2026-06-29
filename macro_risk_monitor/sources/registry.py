@@ -9,6 +9,7 @@ from ..schemas import SourceKind
 from .base import DataSource, SourceUnavailable
 from .fred import FredSource
 from .manual_override import ManualOverrideSource
+from .news_rss import NewsRssSource
 from .sec_edgar import SecEdgarSource
 from .yfinance_source import YFinanceSource
 
@@ -21,6 +22,13 @@ def get_source(kind: SourceKind, thesis_name: str | None = None) -> DataSource:
         return YFinanceSource(cfg.YFINANCE_CACHE_DIR)
     if kind is SourceKind.SEC_EDGAR:
         return SecEdgarSource(cfg.SEC_USER_AGENT, cfg.EDGAR_CACHE_DIR)
+    if kind is SourceKind.NEWS_RSS:
+        return NewsRssSource(
+            cfg.NEWS_RSS_FEEDS,
+            cfg.NEWS_RSS_CACHE_DIR,
+            cfg.CACHE_TTL_HOURS,
+            cfg.NEWS_RSS_LOOKBACK_DAYS,
+        )
     if kind is SourceKind.MANUAL_OVERRIDE:
         if thesis_name is None:
             raise SourceUnavailable(

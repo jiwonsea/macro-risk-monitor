@@ -59,8 +59,9 @@ for _d in (CACHE_DIR, REPORTS_HTML_DIR, REPORTS_PDF_DIR, REPORTS_RAW_DIR, LOGS_D
 FRED_CACHE_DIR = CACHE_DIR / "fred"
 YFINANCE_CACHE_DIR = CACHE_DIR / "yfinance"
 EDGAR_CACHE_DIR = CACHE_DIR / "edgar"
+NEWS_RSS_CACHE_DIR = CACHE_DIR / "news_rss"
 LLM_CACHE_DIR = CACHE_DIR / "llm"
-for _d in (FRED_CACHE_DIR, YFINANCE_CACHE_DIR, EDGAR_CACHE_DIR, LLM_CACHE_DIR):
+for _d in (FRED_CACHE_DIR, YFINANCE_CACHE_DIR, EDGAR_CACHE_DIR, NEWS_RSS_CACHE_DIR, LLM_CACHE_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -68,6 +69,24 @@ for _d in (FRED_CACHE_DIR, YFINANCE_CACHE_DIR, EDGAR_CACHE_DIR, LLM_CACHE_DIR):
 # ---------------------------------------------------------------------------
 DEFAULT_LOOKBACK_DAYS: int = 365  # how much history to fetch by default
 CACHE_TTL_HOURS: int = 6          # data sources cache freshness window
+
+# news_rss: outlets polled for keyword-match counts. Override with the
+# MACRO_RISK_NEWS_FEEDS env var (comma-separated URLs).
+NEWS_RSS_FEEDS: list[str] = [
+    f.strip()
+    for f in os.getenv(
+        "MACRO_RISK_NEWS_FEEDS",
+        ",".join(
+            (
+                "https://feeds.bloomberg.com/markets/news.rss",
+                "https://www.reutersagency.com/feed/?best-topics=business-finance",
+                "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+            )
+        ),
+    ).split(",")
+    if f.strip()
+]
+NEWS_RSS_LOOKBACK_DAYS: int = int(os.getenv("MACRO_RISK_NEWS_LOOKBACK_DAYS", "30"))
 
 # ---------------------------------------------------------------------------
 # Logging

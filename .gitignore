@@ -42,3 +42,7 @@ notes/codex_handoffs/*_review_patch.yaml
 
 # Playwright MCP scratch
 .playwright-mcp/
+
+# Local agent config / session scratch (redundant with CLAUDE.md; not for the published portfolio)
+AGENTS.md
+notes/next_session_prompt.md
