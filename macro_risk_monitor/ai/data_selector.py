@@ -25,7 +25,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 
 from .. import config as cfg
-from ..schemas import Risk, SourceKind
+from ..schemas import SourceKind
 from ..sources.probe import ProbeResult, probe, search_fred_series
 from .codex_client import CodexUnavailable, codex_available
 from .codex_client import extract_json as codex_extract_json

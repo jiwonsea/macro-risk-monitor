@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from macro_risk_monitor.engine.hypothesis import load_risk
-from macro_risk_monitor.schemas import Category, SourceKind
+from macro_risk_monitor.schemas import SourceKind
 
 THESES = Path(__file__).resolve().parents[2] / "theses"
 
