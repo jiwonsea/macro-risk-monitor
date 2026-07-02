@@ -48,12 +48,51 @@ jobs:
         run: |
           # PDF is skipped: Chrome is not installed on the runner and
           # output/pdf.py returns None / no-ops in that case.
+          # One thesis failing must not block the others from deploying;
+          # fail the job only when *every* thesis failed.
+          ok=0; failed=0
+          : > "$RUNNER_TEMP/summary.txt"
           for thesis in theses/*.yaml; do
             name="$(basename "$thesis" .yaml)"
             echo "::group::$name"
-            macro-risk run "$thesis" --output "docs/$name.html"
+            if macro-risk run "$thesis" --output "docs/$name.html" > /tmp/run.log 2>&1; then
+              cat /tmp/run.log
+              ok=$((ok+1))
+              action="$(grep -m1 '^action: ' /tmp/run.log | cut -d' ' -f2- || true)"
+              echo "$name: ${action:-unknown}" >> "$RUNNER_TEMP/summary.txt"
+            else
+              cat /tmp/run.log
+              echo "::warning::thesis $name failed; keeping previously committed HTML if any"
+              failed=$((failed+1))
+              echo "$name: FAILED" >> "$RUNNER_TEMP/summary.txt"
+            fi
             echo "::endgroup::"
           done
+          echo "reports ok=$ok failed=$failed"
+          if [ "$ok" -eq 0 ]; then
+            echo "::error::all theses failed"
+            exit 1
+          fi
+
+      # Optional Slack notification — configure the SLACK_WEBHOOK_URL secret
+      # (Slack incoming webhook) to receive the per-thesis action summary.
+      # Skipped silently when the secret is absent; a notify failure never
+      # fails the build.
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not configured; skipping notification"
+            exit 0
+          fi
+          summary="$(cat "$RUNNER_TEMP/summary.txt" 2>/dev/null || echo 'no summary produced')"
+          text="$(printf 'macro-risk daily report\n%s' "$summary")"
+          payload="$(jq -n --arg text "$text" '{text: $text}')"
+          curl -fsS -X POST -H 'Content-type: application/json' \
+            --data "$payload" "$SLACK_WEBHOOK_URL" \
+            || echo "::warning::Slack notification failed"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

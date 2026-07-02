@@ -12,6 +12,38 @@
 
 ## Session log
 
+### 2026-07-02 (round 6) — Streamlit 대시보드 (Phase 2 backlog)
+- `macro_risk_monitor/ui/dashboard.py` + `macro-risk dashboard` 서브커맨드. **read-only 뷰어** — thesis YAML·`.cache/state/*.json` 스냅샷·`reports/html` 최신 리포트만 읽고 파이프라인은 절대 실행하지 않음 (mutation path는 CLI/cron 단일 유지, 4-layer invariant 준수).
+- data-prep 함수(list_theses/load_state/trigger_rows/status_counts/latest_report)는 streamlit 미설치 환경에서도 import 가능하게 분리 — streamlit import는 main() 내부. 테스트 `tests/unit/test_dashboard.py` 5건 (streamlit 불필요).
+- state 스냅샷의 미지 status 값은 UNKNOWN으로 degrade. pyproject packages에 `macro_risk_monitor.ui` 등록.
+- 테스트 102, ruff clean.
+
+### 2026-07-02 (round 5) — smoke run 발견 2건: API 키 로그 유출 + all-UNKNOWN 오인 문구
+- **FRED api_key 로그 유출 fix**: requests 네트워크 예외(ProxyError 등)가 raw 전파되어 `api_key=` 포함 full URL이 orchestrator `logger.exception`으로 로그에 노출 (공개 CI 로그 위험; GH Actions secret masking은 GH 외 환경을 못 지킴). `requests.RequestException` → `_redact_key()` 적용한 FetchError로 변환, metadata fetch warning도 동일. 테스트 `test_fred_network_error_redacts_api_key`. **주의: 기존 FRED 키가 세션 로그에 노출된 적 있으므로 재발급 권장.**
+- **all-UNKNOWN ≠ all-clear**: 전 트리거 UNKNOWN이어도 summary가 "RED 0개, 활성 시그널 없음"으로 나와 데이터 미수집을 무신호로 오인. `n_known==0`이면 "모든 트리거 UNKNOWN (데이터 미수집/소스 실패). 시그널 판단 불가."로 구분. 테스트 2건.
+- 3개 thesis 전부 CLI smoke run 통과 (오프라인 graceful degrade 경로). 테스트 96, ruff clean.
+
+### 2026-07-02 (round 4) — unit 변환 정직성 + Slack 알림 + README 동기화
+- **units.can_convert 추가**: `convert()`는 percent↔bps 외 canonical 쌍(percent→index 등)에서 값을 그대로 반환하는데 trigger.py는 변환된 것으로 취급해 display_value에 기록했음. `can_convert()` gate + 미지원 쌍은 warning 후 raw 비교. 테스트 `test_can_convert_only_supported_pairs`.
+- **daily.yml Slack 알림** (Phase 2 backlog): `SLACK_WEBHOOK_URL` secret 설정 시 가설별 action 요약 POST. secret 부재 시 조용히 skip, 알림 실패는 `::warning`만 (배포 비차단). run 출력에서 `action:` 라인을 `$RUNNER_TEMP/summary.txt`로 수집.
+- **README 정정**: manual_override 경로 `data/manual_override/{thesis}.yaml`(per-thesis)로, 소스 표에 News RSS 행 추가, Oracle CDS → bond spread(2026-05-27 REPLACE 반영).
+- 테스트 94, ruff clean.
+
+### 2026-07-02 (round 2-3) — NaN 안전성 + patch/override 유실 + CI 내성
+- **NaN → implicit GREEN fix (engine/trigger.py)**: NaN은 모든 tier 비교가 False → implicit-GREEN 분기로 빠져 거짓 안전 신호. `math.isnan` guard로 UNKNOWN 반환. 테스트 `test_nan_reading_returns_unknown_not_green`.
+- **yfinance NaN robustness**: 마지막 행 Close가 NaN이면 그대로 Reading에 유입(위 버그 유발), Volume NaN이면 `int(NaN)`이 try 밖에서 crash → 유효 종가까지 UNKNOWN 유실. Close NaN 행 drop + `_safe_volume`. 테스트 `test_yfinance_skips_nan_close_and_nan_volume` (fake yfinance 모듈 + pandas).
+- **patch.py override 유실 fix**: override YAML이 *존재하지만 비어 있으면* ruamel load가 None → `_mutate_docs`의 `override_data = {}` 재바인딩은 로컬만 변경 → ADD entry의 `new_override`가 조용히 유실. `_load_yaml_docs`에서 None→{} 정규화. 테스트 `test_apply_patch_add_with_empty_override_file`.
+- **risk_parser graceful degrade**: `_call_llm`의 API 호출 미보호 → try/except → heuristic 폴백 (analyzer와 동일 패턴).
+- **daily.yml per-thesis 내성**: 한 가설 실패가 `set -e`로 루프 전체·배포까지 중단시킴 → 실패 가설은 `::warning` 후 skip, 전부 실패 시에만 job fail.
+- 테스트 90→93, ruff clean.
+
+### 2026-07-02 — 코드 리뷰 기반 버그 수정 3건 + robustness 1건
+- **news_rss 캐시 충돌 fix**: `_slug`가 netloc만 사용해 같은 호스트 피드 2개(예: CNBC 피드 2종)가 캐시 파일을 공유·상호 덮어씀. full URL sha1 8자리 suffix 추가. 회귀 테스트 `test_news_rss_cache_slug_unique_per_url`.
+- **news_rss as_of 상한 fix**: `_within`이 lookback 하한만 검사 → backdated `as_of`에도 그 이후 발행 기사가 카운트됨. `[cutoff, as_of+1일)` 구간으로 제한. 회귀 테스트 `test_news_rss_excludes_items_after_as_of`.
+- **analyze() API 예외 graceful degrade**: `client.messages.create` 미보호 → rate limit/529 시 daily cron 전체 크래시 (daily.yml 주석의 "graceful degrade" 약속은 키 부재 케이스만 커버였음). try/except → AnalyzeStub 폴백. 테스트 `tests/unit/test_analyzer_fallback.py` (fake anthropic 모듈 주입).
+- **cli PDF 경로 중복 제거**: `_cmd_run`/`_cmd_analyze`가 `default_html_path` 포맷 문자열을 복제 → 함수 재사용으로 통일 (포맷 변경 시 PDF 경로 어긋남 방지).
+- 테스트 87→90 (기존 세션의 미커밋 lookback assert 포함), ruff clean.
+
 ### 2026-06-29 — CI 워크플로 + news_rss 소스 (직전 세션 누락분 소급 기록)
 - `.github/workflows/ci.yml`: push/PR(main)에 `ruff check .` + `pytest` (Python 3.11, mock-only로 키 없이 통과). `concurrency` cancel-in-progress로 중복 run 취소.
 - `sources/news_rss.py` (`NewsRssSource`): RSS 2.0(`<item>`)·Atom(`<entry>`) 키워드 매칭 카운트. stdlib `xml.etree.ElementTree` 파싱 → 추가 의존성 0. `series`가 comma-separated 키워드 spec (OR 매칭, title+summary 대상). 피드별 best-effort — 한 피드 실패는 로그 후 skip, **전체** 실패 시만 `FetchError`. registry `NEWS_RSS` 분기 + config 3종(`NEWS_RSS_FEEDS`/`NEWS_RSS_LOOKBACK_DAYS`/`NEWS_RSS_CACHE_DIR`, `MACRO_RISK_NEWS_*` env override). `SourceKind.NEWS_RSS` enum 슬롯은 기존부터 존재. 테스트 8건.
@@ -76,13 +108,13 @@
 - Chrome 미설치 환경에서 `output/pdf.py`는 None 반환하고 silently 넘어감 — CI에서는 PDF 단계 스킵.
 - yfinance·anthropic·matplotlib은 optional extras. orchestrator가 ImportError 시 graceful degrade하므로, 새 모듈 추가할 때도 동일 패턴(try/except ImportError → 폴백) 유지.
 - ruamel.yaml `typ="rt"` 기본 dump는 None을 빈 스칼라로 출력 → 기존 `value: null` 라인이 mutation 시 `value:`로 정규화되어 git diff 노이즈 발생. `ai/patch.py:_yaml`이 `add_representer(type(None), ...)`로 `null` 명시 강제. 다른 ruamel 사용처를 추가하면 같은 representer를 등록할 것.
-- (Cowork 샌드박스) mount Windows↔Linux 뷰 desync: 한 파일을 Edit/Write 툴(Windows측)과 bash(Linux mount)로 번갈아 쓰면 한쪽이 stale/잘린 채로 보임. 특히 Edit로 테스트 추가 후 pytest가 stale `__pycache__` `.pyc`로 신규 테스트를 미수집할 수 있음. 파일 하나는 한 mechanism으로만 쓸 것. 섞였으면 bash `open(path,"wb")` 전체 재기록으로 수렴하되, **재기록 직전 read가 transient stale view를 잡으면 본문이 잘릴 수 있으니** 재기록 후 반드시 grep/`ast.parse`(Linux) + Read(Windows) 양측 검증. git은 Linux mount 뷰를 커밋한다.
+- (Cowork 샌드박스) mount Windows↔Linux 뷰 desync: 한 파일을 Edit/Write 툴(Windows측)과 bash(Linux mount)로 번갈아 쓰면 한쪽이 stale/잘린 채로 보임. 특히 Edit로 테스트 추가 후 pytest가 stale `__pycache__` `.pyc`로 신규 테스트를 미수집할 수 있음. 파일 하나는 한 mechanism으로만 쓸 것. 섞였으면 bash `open(path,"wb")` 전체 재기록으로 수렴하되, **재기록 직전 read가 transient stale view를 잡으면 본문이 잘릴 수 있으니** 재기록 후 반드시 grep/`ast.parse`(Linux) + Read(Windows) 양측 검증. git은 Linux mount 뷰를 커밋한다. 추가 발견(2026-07-02): Windows측 Edit로 쓴 파일의 Linux 뷰가 **영구적으로** truncated/null-byte 상태로 남을 수 있고(수 분 대기해도 미수렴), mount의 기존 `.pyc`·파일 unlink가 `Operation not permitted`로 거부될 수 있음. 이때 stale `.pyc` 우회는 `PYTHONPYCACHEPREFIX=/tmp/pyc`, 파일 복구는 `git show HEAD:<path>`(파일 read 우회)로 원본을 얻어 변경을 스크립트로 재적용 후 bash `open(path,"wb")` in-place 덮어쓰기.
 
 ## Phase 2 backlog
 
 - ~~`sources/news_rss.py` (Bloomberg·Reuters·CNBC) + 키워드 매칭~~ ✅ 2026-06-29 (소스 + ai_circular_revenue 연결 완료)
 - `sources/earnings_transcript_nlp.py` (CFO 어휘 변화 자동 탐지)
 - 백테스트: 2024~26 데이터로 ai_circular_revenue 가설 재현 가능성 평가
-- Streamlit 대시보드
-- ~~GitHub Actions daily cron~~ ✅ 2026-06-29 (`daily.yml`) + Slack/이메일 알림 (미구현)
+- ~~Streamlit 대시보드~~ ✅ 2026-07-02 (read-only 뷰어; 차트/히스토리 시각화는 추후)
+- ~~GitHub Actions daily cron~~ ✅ 2026-06-29 (`daily.yml`) + ~~Slack 알림~~ ✅ 2026-07-02 (webhook, secret opt-in) / 이메일 알림 (미구현)
 - ~~GitHub Pages 자동 배포 (포트폴리오 공개 surface)~~ ✅ 2026-06-29 (`daily.yml` → docs/ Pages)

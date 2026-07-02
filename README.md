@@ -13,6 +13,7 @@
 | `run` | `theses/*.yaml` (정형 가설) | HTML 리포트 (트리거 상태표·차트·LLM 해설) |
 | `analyze` | 자연어 한 줄 ("미국 10년물 4.5% 돌파") | LLM이 트리거 골격 생성 → 동일한 HTML 리포트. `--save-thesis`로 YAML 저장 가능 |
 | `pdf` | 기존 HTML | Chrome headless로 PDF 변환 |
+| `dashboard` | — | Streamlit 대시보드 (가설별 트리거 상태·최신 리포트 뷰어, read-only) |
 
 ## Rule of three
 
@@ -49,7 +50,7 @@ macro-risk-monitor/
 ├── theses/                          # 정형 가설 YAML (3개 동봉)
 ├── macro_risk_monitor/
 │   ├── schemas.py                   # pydantic: Risk, Trigger, Reading, Verdict
-│   ├── sources/                     # FRED · yfinance · SEC EDGAR · manual_override
+│   ├── sources/                     # FRED · yfinance · SEC EDGAR · news_rss · manual_override
 │   ├── engine/                      # 임계 평가 + Rule of three
 │   ├── ai/                          # LLM 분석 + hallucination verifier
 │   ├── output/                      # jinja2 HTML + matplotlib + Chrome PDF
@@ -63,7 +64,7 @@ macro-risk-monitor/
 | 파일 | 가설 | 자동 fetch 비율 |
 |---|---|---|
 | `us_long_end_yield.yaml` | 미국 장기금리 → 모기지·회사채 spillover | 100% (FRED + yfinance) |
-| `ai_circular_revenue.yaml` | AI 밸류체인 closed-loop revenue 가설 | 부분 (NVDA 10-Q 자동, OpenAI premium·Oracle CDS 수동) |
+| `ai_circular_revenue.yaml` | AI 밸류체인 closed-loop revenue 가설 | 부분 (뉴스 키워드 카운트 자동, OpenAI premium·Oracle bond spread 수동) |
 | `_401k_pe_distribution.yaml` | 401K 대체자산 개방 → PE retail distribution | 정성 위주 (manual_override) |
 
 ## 데이터 소스
@@ -73,7 +74,8 @@ macro-risk-monitor/
 | FRED | 금리·CPI·PPI·모기지·IG spread | ✓ | `FRED_API_KEY` |
 | yfinance | 주가·ETF·^VIX | ✓ | — |
 | SEC EDGAR | Company Facts (XBRL line items) | ✓ | `SEC_USER_AGENT` 권장 |
-| manual_override | Hiive·Forge·Bloomberg CDS·DRAMeXchange | — | `data/manual_override.yaml` 직접 작성 |
+| News RSS | 키워드 매칭 기사 카운트 (Bloomberg·Reuters·CNBC) | ✓ | — |
+| manual_override | Hiive·Forge·FINRA TRACE·DRAMeXchange | — | `data/manual_override/{thesis}.yaml` 직접 작성 |
 
 ## AI 협업 안내
 
