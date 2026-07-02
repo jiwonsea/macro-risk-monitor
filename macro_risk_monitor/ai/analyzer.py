@@ -32,13 +32,17 @@ def analyze(risk: Risk, verdicts: list[Verdict]) -> tuple[str, str]:
     client = Anthropic(api_key=cfg.ANTHROPIC_API_KEY)
     user_msg = build_analyzer_user_message(risk, verdicts)
     logger.info("Anthropic analyze model=%s tokens_max=%d", cfg.LLM_MODEL, cfg.LLM_MAX_TOKENS)
-    resp = client.messages.create(
-        model=cfg.LLM_MODEL,
-        max_tokens=cfg.LLM_MAX_TOKENS,
-        temperature=cfg.LLM_TEMPERATURE,
-        system=ANALYZER_SYSTEM,
-        messages=[{"role": "user", "content": user_msg}],
-    )
+    try:
+        resp = client.messages.create(
+            model=cfg.LLM_MODEL,
+            max_tokens=cfg.LLM_MAX_TOKENS,
+            temperature=cfg.LLM_TEMPERATURE,
+            system=ANALYZER_SYSTEM,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+    except Exception as exc:  # noqa: BLE001 - transient API failure must not kill the daily run
+        logger.error("Anthropic analyze failed (%s); falling back to AnalyzeStub", exc)
+        return AnalyzeStub.render(risk, verdicts), "stub"
     text = "".join(block.text for block in resp.content if block.type == "text")
     return text, cfg.LLM_MODEL
 

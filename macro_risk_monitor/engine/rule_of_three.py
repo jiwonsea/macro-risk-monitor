@@ -19,10 +19,13 @@ def apply_rule_of_three(
     red_categories: set[Category] = set()
     yellow_categories: set[Category] = set()
     n_red_triggers = 0
+    n_known = 0
     for v in verdicts:
         trig = by_id.get(v.trigger_id)
         if trig is None:
             continue
+        if v.status is not Status.UNKNOWN:
+            n_known += 1
         if v.status is Status.RED:
             n_red_triggers += 1
             red_categories.add(trig.category)
@@ -51,7 +54,12 @@ def apply_rule_of_three(
         )
     else:
         action = "no_signal"
-        summary = "RED 트리거 0개. 활성 시그널 없음."
+        if n_known == 0 and verdicts:
+            # Every trigger degraded to UNKNOWN — this is "no data", not a
+            # verified all-clear; say so instead of implying green skies.
+            summary = "모든 트리거 UNKNOWN (데이터 미수집/소스 실패). 시그널 판단 불가."
+        else:
+            summary = "RED 트리거 0개. 활성 시그널 없음."
         if yellow_categories:
             summary += f" YELLOW 카테고리: {sorted(c.value for c in yellow_categories)}."
 

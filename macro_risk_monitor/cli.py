@@ -33,6 +33,7 @@ from .ai.risk_parser import parse_risk
 from .ai.review_parser import parse_feedback
 from .ai.reviewer import write_review_handoff
 from .engine.hypothesis import load_risk
+from .output.html import default_html_path
 from .output.pdf import html_to_pdf
 from .pipeline import run_pipeline
 from .schemas import Risk
@@ -73,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--patch", type=Path, help="staged review patch YAML")
     p_apply.add_argument("--apply", action="store_true", help="write changes instead of dry-run diff")
 
+    sub.add_parser("dashboard", help="launch the read-only Streamlit dashboard")
+
     p_draft = sub.add_parser(
         "draft-thesis",
         help="hypothesis -> auto-select & verify data sources -> thesis YAML",
@@ -98,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_apply_review(args)
     if args.command == "draft-thesis":
         return _cmd_draft_thesis(args)
+    if args.command == "dashboard":
+        return _cmd_dashboard()
     parser.error("unreachable")
     return 2
 
@@ -108,7 +113,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     print(f"action: {report.decision.action}")
     print(f"summary: {report.decision.summary}")
     if args.pdf:
-        html_path = args.output or cfg.REPORTS_HTML_DIR / f"{report.generated_at.strftime('%Y-%m-%d')}-{risk.name}.html"
+        html_path = args.output or default_html_path(risk.name, report.generated_at)
         pdf = html_to_pdf(html_path)
         if pdf:
             print(f"pdf: {pdf}")
@@ -132,7 +137,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
     report = run_pipeline(risk, out_html=args.output, skip_llm=args.skip_llm)
     print(f"action: {report.decision.action}")
     if args.pdf:
-        html_path = args.output or cfg.REPORTS_HTML_DIR / f"{report.generated_at.strftime('%Y-%m-%d')}-{risk.name}.html"
+        html_path = args.output or default_html_path(risk.name, report.generated_at)
         pdf = html_to_pdf(html_path)
         if pdf:
             print(f"pdf: {pdf}")
@@ -268,6 +273,27 @@ def _save_yaml(risk, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(payload, fh, allow_unicode=True, sort_keys=False)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+def _cmd_dashboard() -> int:
+    """Launch streamlit with the dashboard module (read-only viewer)."""
+    import subprocess
+
+    try:
+        import streamlit  # noqa: F401
+    except ImportError:
+        print(
+            "streamlit not installed; install with "
+            "`pip install 'macro-risk-monitor[ui]'`",
+            file=sys.stderr,
+        )
+        return 1
+    app = Path(__file__).resolve().parent / "ui" / "dashboard.py"
+    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
 
 
 if __name__ == "__main__":

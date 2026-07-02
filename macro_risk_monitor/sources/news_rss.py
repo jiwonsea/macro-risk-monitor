@@ -22,6 +22,7 @@ does not blank the signal; only if *every* feed fails is `FetchError` raised.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from datetime import date, datetime, timedelta, timezone
@@ -92,6 +93,11 @@ class NewsRssSource(DataSource):
         cutoff = datetime.combine(
             end - timedelta(days=self.lookback_days), datetime.min.time(), timezone.utc
         )
+        # Upper bound: end of the as_of day. Without it a backdated `as_of`
+        # would still count items published after it.
+        upper = datetime.combine(
+            end + timedelta(days=1), datetime.min.time(), timezone.utc
+        )
 
         items: list[NewsItem] = []
         errors: list[str] = []
@@ -109,7 +115,9 @@ class NewsRssSource(DataSource):
             )
 
         matched = [
-            it for it in items if it.matches(keywords) and self._within(it, cutoff)
+            it
+            for it in items
+            if it.matches(keywords) and self._within(it, cutoff, upper)
         ]
         latest = max(
             (it.published for it in matched if it.published is not None),
@@ -137,12 +145,12 @@ class NewsRssSource(DataSource):
             return []
         return [kw.strip().lower() for kw in series.split(",") if kw.strip()]
 
-    def _within(self, item: NewsItem, cutoff: datetime) -> bool:
+    def _within(self, item: NewsItem, cutoff: datetime, upper: datetime) -> bool:
         # Items with no parseable date are counted (conservative); dated items
-        # must fall on/after the cutoff.
+        # must fall inside [cutoff, upper).
         if item.published is None:
             return True
-        return item.published >= cutoff
+        return cutoff <= item.published < upper
 
     @staticmethod
     def _parse_feed(xml: str) -> list[NewsItem]:
@@ -244,5 +252,9 @@ def _parse_iso_date(value: str) -> datetime | None:
 
 
 def _slug(feed: str) -> str:
+    # Host alone is not unique (two feeds on the same outlet would share a
+    # cache file and silently overwrite each other), so append a short hash
+    # of the full URL.
     host = urlparse(feed).netloc or "feed"
-    return re.sub(r"[^A-Za-z0-9._-]", "_", host)
+    digest = hashlib.sha1(feed.encode("utf-8")).hexdigest()[:8]
+    return f"{re.sub(r'[^A-Za-z0-9._-]', '_', host)}_{digest}"

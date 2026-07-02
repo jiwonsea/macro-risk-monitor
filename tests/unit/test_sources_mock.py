@@ -252,7 +252,9 @@ def test_news_rss_parses_atom(tmp_path: Path, monkeypatch):
 def test_news_rss_uses_cache(tmp_path: Path, monkeypatch):
     import macro_risk_monitor.sources.news_rss as news_mod
 
-    cache_file = tmp_path / "feed.example_2026-05-26.xml"
+    from macro_risk_monitor.sources.news_rss import _slug
+
+    cache_file = tmp_path / f"{_slug('http://feed.example/rss')}_2026-05-26.xml"
     cache_file.write_text(_RSS_XML, encoding="utf-8")
 
     def boom(*a, **kw):
@@ -264,6 +266,33 @@ def test_news_rss_uses_cache(tmp_path: Path, monkeypatch):
     )
     reading = src.fetch(_news_trigger("circular revenue"), as_of=date(2026, 5, 26))
     assert reading.value == 1.0
+
+
+def test_news_rss_cache_slug_unique_per_url():
+    # Two feeds on the same host must not share a cache file (regression:
+    # netloc-only slugs collided and one feed silently overwrote the other).
+    from macro_risk_monitor.sources.news_rss import _slug
+
+    a = _slug("https://www.cnbc.com/id/100003114/device/rss/rss.html")
+    b = _slug("https://www.cnbc.com/id/19746125/device/rss/rss.html")
+    assert a != b
+    assert a.startswith("www.cnbc.com_")
+
+
+def test_news_rss_excludes_items_after_as_of(tmp_path: Path, monkeypatch):
+    # A backdated as_of must not count items published after it.
+    import macro_risk_monitor.sources.news_rss as news_mod
+
+    monkeypatch.setattr(
+        news_mod.requests, "get", lambda *a, **kw: _RssResp(_RSS_XML)
+    )
+    src = NewsRssSource(["http://feed.example/rss"], tmp_path, lookback_days=30)
+    # Item 1 (2026-05-20, matching) is *after* this as_of -> excluded.
+    reading = src.fetch(
+        _news_trigger("circular revenue, vendor financing"),
+        as_of=date(2026, 5, 19),
+    )
+    assert reading.value == 0.0
 
 
 def test_news_rss_no_feeds_unavailable(tmp_path: Path):
@@ -315,4 +344,69 @@ def test_registry_news_rss(tmp_path: Path, monkeypatch):
     src = get_source(SourceKind.NEWS_RSS)
     assert isinstance(src, NewsRssSource)
     assert src.feeds == ["http://feed.example/rss"]
-   
+    assert src.lookback_days == 14
+
+    get_source.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# yfinance
+# ---------------------------------------------------------------------------
+def test_yfinance_skips_nan_close_and_nan_volume(tmp_path: Path, monkeypatch):
+    """NaN Close rows must be dropped (not leak NaN into Reading.value) and a
+    NaN Volume must not crash fetch() after the yf call succeeded."""
+    import sys
+    import types
+
+    import pandas as pd
+
+    hist = pd.DataFrame(
+        {
+            "Open": [1.0, 2.0],
+            "High": [1.0, 2.0],
+            "Low": [1.0, 2.0],
+            "Close": [10.5, float("nan")],
+            "Volume": [float("nan"), 100.0],
+        },
+        index=pd.to_datetime(["2026-05-19", "2026-05-20"]),
+    )
+
+    class _FakeTicker:
+        def __init__(self, series):
+            pass
+
+        def history(self, **kwargs):
+            return hist
+
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.Ticker = _FakeTicker
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+
+    from macro_risk_monitor.sources.yfinance_source import YFinanceSource
+
+    src = YFinanceSource(tmp_path)
+    reading = src.fetch(_t(SourceKind.YFINANCE, "FAKE"), as_of=date(2026, 5, 26))
+    assert reading.value == 10.5           # last non-NaN close
+    assert reading.as_of == date(2026, 5, 19)
+    assert reading.raw["volume"] is None   # NaN volume -> None, no crash
+
+
+def test_fred_network_error_redacts_api_key(tmp_path: Path, monkeypatch):
+    """Network exceptions embed the request URL incl. api_key; the FetchError
+    surfaced to logs must have it redacted."""
+    import requests as requests_lib
+
+    import macro_risk_monitor.sources.fred as fred_mod
+
+    def boom(*a, **kw):
+        raise requests_lib.ConnectionError(
+            "HTTPSConnectionPool: /fred/series/observations?series_id=DGS10"
+            "&api_key=SECRETKEY123&file_type=json"
+        )
+
+    monkeypatch.setattr(fred_mod.requests, "get", boom)
+    src = FredSource(api_key="SECRETKEY123", cache_dir=tmp_path, cache_ttl_hours=0)
+    with pytest.raises(FetchError) as ei:
+        src.fetch(_t(SourceKind.FRED, "DGS10"), as_of=date(2026, 5, 26))
+    assert "SECRETKEY123" not in str(ei.value)
+    assert "api_key=***" in str(ei.value)

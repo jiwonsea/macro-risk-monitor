@@ -64,3 +64,21 @@ def test_two_red_same_category_counts_once():
     assert d.action == "monitor"  # only one distinct category
     assert "RED 트리거 2개" in d.summary
     assert "RED 카테고리 1개" in d.summary
+
+
+def test_all_unknown_summary_flags_missing_data():
+    # All-UNKNOWN must not read like a verified all-clear.
+    trigs = [_trig("a", Category.LEADING), _trig("b", Category.COINCIDENT)]
+    verdicts = [_v("a", Status.UNKNOWN), _v("b", Status.UNKNOWN)]
+    d = apply_rule_of_three(trigs, verdicts)
+    assert d.action == "no_signal"
+    assert "UNKNOWN" in d.summary
+    assert "활성 시그널 없음" not in d.summary
+
+
+def test_mixed_known_keeps_normal_no_signal_summary():
+    trigs = [_trig("a", Category.LEADING), _trig("b", Category.COINCIDENT)]
+    verdicts = [_v("a", Status.GREEN), _v("b", Status.UNKNOWN)]
+    d = apply_rule_of_three(trigs, verdicts)
+    assert d.action == "no_signal"
+    assert "활성 시그널 없음" in d.summary

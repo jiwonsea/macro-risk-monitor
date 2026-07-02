@@ -40,6 +40,12 @@ class YFinanceSource(DataSource):
         if hist is None or hist.empty:
             raise FetchError(f"yfinance returned empty history for {trigger.series}")
 
+        # Rows with NaN Close (e.g. partially populated sessions) would leak a
+        # NaN Reading value downstream; keep only rows with a real close.
+        hist = hist[hist["Close"].notna()]
+        if hist.empty:
+            raise FetchError(f"yfinance history has no non-NaN close for {trigger.series}")
+
         last_row = hist.iloc[-1]
         last_date = hist.index[-1].date()
         return Reading(
@@ -53,6 +59,19 @@ class YFinanceSource(DataSource):
                 "high": float(last_row["High"]),
                 "low": float(last_row["Low"]),
                 "close": float(last_row["Close"]),
-                "volume": int(last_row["Volume"]) if "Volume" in last_row else None,
+                "volume": _safe_volume(last_row),
             },
         )
+
+
+def _safe_volume(row) -> int | None:
+    # Volume can be missing or NaN (indices like ^VIX); int(NaN) raises.
+    if "Volume" not in row:
+        return None
+    vol = row["Volume"]
+    try:
+        if vol != vol:  # NaN check without importing numpy/math for pandas scalars
+            return None
+        return int(vol)
+    except (TypeError, ValueError):
+        return None

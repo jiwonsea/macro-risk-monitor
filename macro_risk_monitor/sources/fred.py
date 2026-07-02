@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import date
 from pathlib import Path
 
@@ -80,7 +81,12 @@ class FredSource(DataSource):
             "limit": 50,
         }
         logger.info("FRED API fetch series=%s end=%s", series_id, end.isoformat())
-        resp = requests.get(FRED_API_URL, params=params, timeout=20)
+        try:
+            resp = requests.get(FRED_API_URL, params=params, timeout=20)
+        except requests.RequestException as exc:
+            # Network errors embed the full request URL (api_key included);
+            # redact before the message can reach logs / CI output.
+            raise FetchError(f"FRED network error: {_redact_key(str(exc))}") from None
         if not resp.ok:
             raise FetchError(f"FRED {resp.status_code}: {resp.text[:200]}")
         return resp.json()
@@ -104,7 +110,9 @@ class FredSource(DataSource):
                 return None
             units = series[0].get("units_short") or series[0].get("units")
         except Exception as exc:  # noqa: BLE001 - metadata is best effort
-            logger.warning("FRED metadata fetch failed for %s: %s", series_id, exc)
+            logger.warning(
+                "FRED metadata fetch failed for %s: %s", series_id, _redact_key(str(exc))
+            )
             return None
         if units:
             _SERIES_UNITS_CACHE[series_id] = units
@@ -122,3 +130,7 @@ class FredSource(DataSource):
 
         age_hours = (time.time() - cache_path.stat().st_mtime) / 3600
         return age_hours < self.cache_ttl_hours
+
+
+def _redact_key(message: str) -> str:
+    return re.sub(r"api_key=[^&\s'\"]+", "api_key=***", message)

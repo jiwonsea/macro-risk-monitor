@@ -111,3 +111,12 @@ def test_fred_percent_to_bps_can_cross_small_threshold():
     v = evaluate(trig, reading)
 
     assert v.status is Status.RED
+
+
+def test_nan_reading_returns_unknown_not_green():
+    # Regression: NaN compares False on every tier and used to fall through
+    # to the implicit-GREEN branch (false all-clear).
+    trig = _trig(red=">= 4.5", yellow=">= 4.0")
+    v = evaluate(trig, _read(float("nan")))
+    assert v.status is Status.UNKNOWN
+    assert "NaN" in v.rationale

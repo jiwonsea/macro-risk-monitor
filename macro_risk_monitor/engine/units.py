@@ -24,6 +24,17 @@ def canonical_unit(unit: str | None) -> str | None:
     return _ALIASES.get(str(unit).strip().lower())
 
 
+_CONVERTIBLE_PAIRS = {("percent", "bps"), ("bps", "percent")}
+
+
+def can_convert(source: str | None, target: str | None) -> bool:
+    """True when convert() can produce a genuinely converted value."""
+    s, t = canonical_unit(source), canonical_unit(target)
+    if s is None or t is None:
+        return False
+    return s == t or (s, t) in _CONVERTIBLE_PAIRS
+
+
 def convert(value: float, source: str | None, target: str | None) -> float:
     source_unit = canonical_unit(source)
     target_unit = canonical_unit(target)

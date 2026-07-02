@@ -13,10 +13,11 @@ in the report.
 from __future__ import annotations
 
 import logging
+import math
 import re
 
 from ..schemas import Reading, Status, Threshold, Trigger, Verdict
-from .units import canonical_unit, convert
+from .units import can_convert, canonical_unit, convert
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,15 @@ def evaluate(trigger: Trigger, reading: Reading | None) -> Verdict:
             reading=reading,
             rationale="reading unavailable",
         )
+    if isinstance(reading.value, float) and math.isnan(reading.value):
+        # NaN compares False against every tier, which would otherwise fall
+        # through to the implicit-GREEN branch — a false all-clear.
+        return Verdict(
+            trigger_id=trigger.id,
+            status=Status.UNKNOWN,
+            reading=reading,
+            rationale="reading is NaN",
+        )
 
     value = reading.value
     display_value: float | str | None = None
@@ -51,8 +61,18 @@ def evaluate(trigger: Trigger, reading: Reading | None) -> Verdict:
         source_canon = canonical_unit(source_unit)
         target_canon = canonical_unit(trigger.unit)
         if source_canon and target_canon and source_canon != target_canon:
-            display_value = convert(float(value), source_unit, trigger.unit)
-            value = display_value
+            if can_convert(source_unit, trigger.unit):
+                display_value = convert(float(value), source_unit, trigger.unit)
+                value = display_value
+            else:
+                # convert() would return the value unchanged for unsupported
+                # pairs (e.g. percent -> index); don't pretend it converted.
+                logger.warning(
+                    "no conversion rule for %s: source=%r target=%r — comparing raw value",
+                    trigger.id,
+                    source_unit,
+                    trigger.unit,
+                )
         elif source_unit and trigger.unit and not (source_canon and target_canon):
             logger.warning(
                 "unit conversion skipped for %s: source=%r target=%r",

@@ -86,3 +86,35 @@ def test_dump_and_load_patch(tmp_path):
     dump_patch(patch, path)
 
     assert load_patch(path).entries[0].action == PatchAction.KEEP
+
+
+def test_apply_patch_add_with_empty_override_file(tmp_path):
+    """Regression: an existing-but-empty override YAML loads as None; ADD
+    entries' new_override payloads were silently dropped instead of written."""
+    pytest.importorskip("ruamel.yaml")
+    risk_path, override_path = _write_sample_files(tmp_path)
+    override_path.write_text("", encoding="utf-8")  # exists but empty
+
+    patch = ReviewPatch(
+        thesis_name="sample",
+        review_date=date(2026, 5, 27),
+        entries=[
+            PatchEntry(
+                action=PatchAction.ADD,
+                target_id="b",
+                new_category="leading",
+                new_source="manual_override",
+                new_series="new_key",
+                new_threshold=Threshold(red=">= 2"),
+                rationale="add trigger b",
+                new_override={"value": None, "as_of": date(2026, 5, 27)},
+            )
+        ],
+    )
+    apply_patch(patch, risk_path, override_path)
+
+    risk = load_risk(risk_path)
+    assert any(t.id == "b" for t in risk.triggers)
+    override_text = override_path.read_text(encoding="utf-8")
+    assert "new_key:" in override_text
+    assert "value: null" in override_text  # explicit-null representer holds

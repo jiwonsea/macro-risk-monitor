@@ -39,13 +39,17 @@ def _call_llm(text: str) -> dict | None:
         return None
 
     client = Anthropic(api_key=cfg.ANTHROPIC_API_KEY)
-    resp = client.messages.create(
-        model=cfg.LLM_MODEL,
-        max_tokens=2048,
-        temperature=0.3,
-        system=RISK_PARSER_SYSTEM,
-        messages=[{"role": "user", "content": build_risk_parser_user_message(text)}],
-    )
+    try:
+        resp = client.messages.create(
+            model=cfg.LLM_MODEL,
+            max_tokens=2048,
+            temperature=0.3,
+            system=RISK_PARSER_SYSTEM,
+            messages=[{"role": "user", "content": build_risk_parser_user_message(text)}],
+        )
+    except Exception as exc:  # noqa: BLE001 - transient API failure -> heuristic fallback
+        logger.warning("risk_parser LLM call failed (%s); falling back to heuristic", exc)
+        return None
     raw = "".join(b.text for b in resp.content if b.type == "text").strip()
     json_str = _extract_json(raw)
     if not json_str:

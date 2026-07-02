@@ -69,8 +69,9 @@ def load_patch(path: Path) -> ReviewPatch:
 
 
 def _mutate_docs(patch: ReviewPatch, risk_data: Any, override_data: Any) -> None:
-    if override_data is None:
-        override_data = {}
+    # override_data must already be a mapping: rebinding None -> {} here would
+    # mutate a local only and silently drop new_override entries (see
+    # _load_yaml_docs, which normalises empty/missing files to {}).
     triggers = risk_data.setdefault("triggers", [])
     for entry in patch.entries:
         if entry.unverified:
@@ -155,7 +156,10 @@ def _override_key(trigger: Any) -> str:
 
 
 def _load_yaml_docs(risk_path: Path, override_path: Path) -> tuple[Any, Any]:
-    return _load_yaml_file(risk_path), _load_yaml_file(override_path) if override_path.exists() else {}
+    # An *existing but empty* YAML file loads as None; normalise to {} so
+    # callers can mutate in place and the result round-trips to a dump.
+    override = _load_yaml_file(override_path) if override_path.exists() else None
+    return _load_yaml_file(risk_path), override if override is not None else {}
 
 
 def _load_yaml_file(path: Path) -> Any:
