@@ -64,6 +64,7 @@ def run_pipeline(
     previous = thesis_state.load_previous(state_dir, risk.name)
     diff = thesis_state.diff(previous, verdicts)
     thesis_state.save(state_dir, risk.name, verdicts)
+    thesis_state.append_history(state_dir, risk.name, verdicts)
 
     html_path = out_html or default_html_path(risk.name, report.generated_at)
     render_report(report, html_path, state_diff=diff)

@@ -63,3 +63,51 @@ def test_latest_report_picks_newest(tmp_path: Path):
     p = latest_report("foo", html_dir=tmp_path)
     assert p is not None and p.name == "2026-07-02-foo.html"
     assert latest_report("baz", html_dir=tmp_path) is None
+
+
+def test_history_roundtrip_and_frame(tmp_path: Path):
+    from datetime import date as date_cls
+
+    from macro_risk_monitor.engine.thesis_state import append_history, load_history
+    from macro_risk_monitor.schemas import Reading, Verdict
+    from macro_risk_monitor.ui.dashboard import history_frame, status_timeline_rows
+
+    def _verdict(tid: str, status: Status, value=None):
+        reading = None
+        if value is not None:
+            reading = Reading(trigger_id=tid, value=value, as_of=date_cls(2026, 7, 1))
+        return Verdict(trigger_id=tid, status=status, reading=reading)
+
+    append_history(tmp_path, "foo", [_verdict("a", Status.GREEN, 1.0),
+                                     _verdict("b", Status.UNKNOWN)])
+    append_history(tmp_path, "foo", [_verdict("a", Status.RED, 9.0),
+                                     _verdict("b", Status.UNKNOWN)])
+
+    entries = load_history(tmp_path, "foo")
+    assert len(entries) == 2
+    assert entries[0]["verdicts"]["a"] == {"status": "green", "value": 1.0}
+    assert entries[1]["verdicts"]["a"]["status"] == "red"
+    assert entries[0]["verdicts"]["b"]["value"] is None
+
+    frame = history_frame("foo", state_dir=tmp_path)
+    assert frame["values"]["a"] == [1.0, 9.0]
+    assert frame["statuses"]["b"] == ["unknown", "unknown"]
+
+    rows = status_timeline_rows(frame)
+    row_a = next(r for r in rows if r["trigger"] == "a")
+    assert row_a["timeline"] == "🟢🔴"
+
+
+def test_load_history_skips_corrupt_lines(tmp_path: Path):
+    from macro_risk_monitor.engine.thesis_state import load_history
+
+    p = tmp_path / "foo_history.jsonl"
+    p.write_text(
+        '{"generated_at": "t1", "verdicts": {"a": {"status": "red", "value": 1}}}\n'
+        "not-json\n"
+        '{"generated_at": "t2", "verdicts": {"a": {"status": "green", "value": 2}}}\n',
+        encoding="utf-8",
+    )
+    entries = load_history(tmp_path, "foo")
+    assert [e["generated_at"] for e in entries] == ["t1", "t2"]
+    assert load_history(tmp_path, "foo", limit=1)[0]["generated_at"] == "t2"

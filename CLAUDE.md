@@ -12,6 +12,12 @@
 
 ## Session log
 
+### 2026-07-02 (round 7) — run 히스토리 누적 + 대시보드 추이 차트
+- `thesis_state.append_history/load_history`: `.cache/state/{name}_history.jsonl` append-only 로그 (run당 1줄, 트리거별 status+numeric value; display_value 우선, NaN drop). orchestrator가 snapshot save 직후 기록 — **백테스트의 데이터 축적 기반**이기도 함.
+- 대시보드에 History 섹션: status 타임라인(이모지 행렬) + 트리거별 value 추이 line chart. data-prep(`history_frame`/`status_timeline_rows`)은 streamlit 불필요, corrupt JSONL 라인은 skip.
+- 사용자와 backlog 협의: 백테스트·transcript NLP는 데이터 소스 결정 선행 필요로 보류, 히스토리 차트를 먼저 진행 (사용자 위임 판단).
+- 테스트 104, ruff clean.
+
 ### 2026-07-02 (round 6) — Streamlit 대시보드 (Phase 2 backlog)
 - `macro_risk_monitor/ui/dashboard.py` + `macro-risk dashboard` 서브커맨드. **read-only 뷰어** — thesis YAML·`.cache/state/*.json` 스냅샷·`reports/html` 최신 리포트만 읽고 파이프라인은 절대 실행하지 않음 (mutation path는 CLI/cron 단일 유지, 4-layer invariant 준수).
 - data-prep 함수(list_theses/load_state/trigger_rows/status_counts/latest_report)는 streamlit 미설치 환경에서도 import 가능하게 분리 — streamlit import는 main() 내부. 테스트 `tests/unit/test_dashboard.py` 5건 (streamlit 불필요).
@@ -115,6 +121,6 @@
 - ~~`sources/news_rss.py` (Bloomberg·Reuters·CNBC) + 키워드 매칭~~ ✅ 2026-06-29 (소스 + ai_circular_revenue 연결 완료)
 - `sources/earnings_transcript_nlp.py` (CFO 어휘 변화 자동 탐지)
 - 백테스트: 2024~26 데이터로 ai_circular_revenue 가설 재현 가능성 평가
-- ~~Streamlit 대시보드~~ ✅ 2026-07-02 (read-only 뷰어; 차트/히스토리 시각화는 추후)
+- ~~Streamlit 대시보드~~ ✅ 2026-07-02 (read-only 뷰어 + 히스토리 추이 차트)
 - ~~GitHub Actions daily cron~~ ✅ 2026-06-29 (`daily.yml`) + ~~Slack 알림~~ ✅ 2026-07-02 (webhook, secret opt-in) / 이메일 알림 (미구현)
 - ~~GitHub Pages 자동 배포 (포트폴리오 공개 surface)~~ ✅ 2026-06-29 (`daily.yml` → docs/ Pages)

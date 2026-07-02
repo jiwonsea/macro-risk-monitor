@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .. import config as cfg
 from ..engine.hypothesis import load_risk
+from ..engine.thesis_state import load_history
 from ..schemas import Risk, Status
 
 _STATUS_ICON = {
@@ -82,6 +83,50 @@ def status_counts(verdicts: dict[str, Status]) -> dict[str, int]:
     return out
 
 
+def history_frame(risk_name: str, state_dir: Path | None = None) -> dict:
+    """Reshape history JSONL into chart-ready columns.
+
+    Returns {"timestamps": [str], "values": {trigger_id: [float|None]},
+             "statuses": {trigger_id: [str]}} — aligned by run.
+    """
+    d = state_dir or (cfg.CACHE_DIR / "state")
+    entries = load_history(d, risk_name)
+    timestamps: list[str] = []
+    values: dict[str, list] = {}
+    statuses: dict[str, list] = {}
+    ids: list[str] = []
+    for e in entries:
+        for tid in e.get("verdicts", {}):
+            if tid not in ids:
+                ids.append(tid)
+    for e in entries:
+        timestamps.append(e.get("generated_at") or "")
+        verdicts = e.get("verdicts", {})
+        for tid in ids:
+            v = verdicts.get(tid) or {}
+            values.setdefault(tid, []).append(v.get("value"))
+            statuses.setdefault(tid, []).append(v.get("status", "unknown"))
+    return {"timestamps": timestamps, "values": values, "statuses": statuses}
+
+
+def status_timeline_rows(frame: dict) -> list[dict]:
+    """One row per trigger; one icon-cell per run (oldest -> newest)."""
+    rows = []
+    for tid, sts in frame["statuses"].items():
+        icons = "".join(
+            _STATUS_ICON.get(_safe_status(s), "⚪") for s in sts
+        )
+        rows.append({"trigger": tid, "timeline": icons})
+    return rows
+
+
+def _safe_status(value: str) -> Status:
+    try:
+        return Status(value)
+    except ValueError:
+        return Status.UNKNOWN
+
+
 # ---------------------------------------------------------------- streamlit
 def main() -> None:  # pragma: no cover - thin streamlit glue
     import streamlit as st
@@ -128,6 +173,26 @@ def main() -> None:  # pragma: no cover - thin streamlit glue
             if w.rationale:
                 line += f" ({w.rationale})"
             st.markdown(line)
+
+    frame = history_frame(risk.name)
+    if len(frame["timestamps"]) >= 2:
+        st.subheader("History")
+        st.dataframe(status_timeline_rows(frame), use_container_width=True)
+        numeric_ids = [
+            tid
+            for tid, vals in frame["values"].items()
+            if any(v is not None for v in vals)
+        ]
+        if numeric_ids:
+            pick = st.selectbox("Trigger value trend", numeric_ids)
+            st.line_chart(
+                {
+                    "value": [
+                        v if v is not None else float("nan")
+                        for v in frame["values"][pick]
+                    ]
+                }
+            )
 
     report = latest_report(risk.name)
     if report:
