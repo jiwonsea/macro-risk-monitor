@@ -35,6 +35,7 @@ packages = [
     "macro_risk_monitor.ai",
     "macro_risk_monitor.output",
     "macro_risk_monitor.pipeline",
+    "macro_risk_monitor.ui",
 ]
 
 [tool.setuptools.package-data]
