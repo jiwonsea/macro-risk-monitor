@@ -7,6 +7,7 @@ from functools import lru_cache
 from .. import config as cfg
 from ..schemas import SourceKind
 from .base import DataSource, SourceUnavailable
+from .earnings_transcript_nlp import TranscriptNlpSource
 from .fred import FredSource
 from .manual_override import ManualOverrideSource
 from .news_rss import NewsRssSource
@@ -29,6 +30,8 @@ def get_source(kind: SourceKind, thesis_name: str | None = None) -> DataSource:
             cfg.CACHE_TTL_HOURS,
             cfg.NEWS_RSS_LOOKBACK_DAYS,
         )
+    if kind is SourceKind.EARNINGS_TRANSCRIPT_NLP:
+        return TranscriptNlpSource(cfg.TRANSCRIPTS_DIR, cfg.TRANSCRIPT_LOOKBACK_DAYS)
     if kind is SourceKind.MANUAL_OVERRIDE:
         if thesis_name is None:
             raise SourceUnavailable(

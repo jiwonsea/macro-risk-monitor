@@ -88,6 +88,12 @@ NEWS_RSS_FEEDS: list[str] = [
 ]
 NEWS_RSS_LOOKBACK_DAYS: int = int(os.getenv("MACRO_RISK_NEWS_LOOKBACK_DAYS", "30"))
 
+# earnings_transcript_nlp: local transcript files, data/transcripts/{TICKER}/.
+TRANSCRIPTS_DIR = Path(
+    os.getenv("MACRO_RISK_TRANSCRIPTS_DIR", str(BASE_DIR / "data" / "transcripts"))
+)
+TRANSCRIPT_LOOKBACK_DAYS: int = int(os.getenv("MACRO_RISK_TRANSCRIPT_LOOKBACK_DAYS", "120"))
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------

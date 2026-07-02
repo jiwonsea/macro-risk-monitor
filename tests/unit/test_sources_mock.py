@@ -410,3 +410,69 @@ def test_fred_network_error_redacts_api_key(tmp_path: Path, monkeypatch):
         src.fetch(_t(SourceKind.FRED, "DGS10"), as_of=date(2026, 5, 26))
     assert "SECRETKEY123" not in str(ei.value)
     assert "api_key=***" in str(ei.value)
+
+
+# ---------------------------------------------------------------------------
+# earnings_transcript_nlp
+# ---------------------------------------------------------------------------
+def _transcript_trigger(series: str) -> Trigger:
+    return Trigger(
+        id="tone_t",
+        category=Category.COINCIDENT,
+        source=SourceKind.EARNINGS_TRANSCRIPT_NLP,
+        series=series,
+        threshold=Threshold(red=">= 2", yellow=">= 1"),
+    )
+
+
+def _write_transcript(root: Path, ticker: str, day: str, text: str) -> None:
+    d = root / ticker
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{day}-call.txt").write_text(text, encoding="utf-8")
+
+
+def test_transcript_counts_matching_tickers(tmp_path: Path):
+    from macro_risk_monitor.sources.earnings_transcript_nlp import TranscriptNlpSource
+
+    _write_transcript(tmp_path, "MSFT", "2026-04-29",
+                      "We will rationalize our capex going forward.")
+    _write_transcript(tmp_path, "GOOGL", "2026-04-25",
+                      "Compute remains constrained; spend continues.")
+    _write_transcript(tmp_path, "META", "2026-04-30",
+                      "Focus on efficiency and discipline in spend.")
+
+    src = TranscriptNlpSource(tmp_path, lookback_days=120)
+    reading = src.fetch(
+        _transcript_trigger("MSFT|GOOGL|META|AMZN::rationalize,efficiency,discipline"),
+        as_of=date(2026, 5, 26),
+    )
+    assert reading.value == 2.0  # MSFT + META match, GOOGL not, AMZN missing
+    assert reading.as_of == date(2026, 4, 30)
+    assert reading.raw["per_ticker"]["GOOGL"]["matched"] is False
+    assert reading.raw["per_ticker"]["AMZN"]["hits"] is None
+
+
+def test_transcript_respects_as_of_and_lookback(tmp_path: Path):
+    from macro_risk_monitor.sources.earnings_transcript_nlp import TranscriptNlpSource
+
+    # transcript after as_of must be invisible (backtest honesty)
+    _write_transcript(tmp_path, "MSFT", "2026-04-29", "rationalize everything")
+    src = TranscriptNlpSource(tmp_path, lookback_days=120)
+    with pytest.raises(FetchError):
+        src.fetch(
+            _transcript_trigger("MSFT::rationalize"), as_of=date(2026, 4, 1)
+        )
+    # and one outside the lookback window is also invisible
+    with pytest.raises(FetchError):
+        src.fetch(
+            _transcript_trigger("MSFT::rationalize"), as_of=date(2026, 12, 31)
+        )
+
+
+def test_transcript_bad_series_spec(tmp_path: Path):
+    from macro_risk_monitor.sources.earnings_transcript_nlp import TranscriptNlpSource
+
+    src = TranscriptNlpSource(tmp_path)
+    tmp_path.mkdir(exist_ok=True)
+    with pytest.raises(FetchError):
+        src.fetch(_transcript_trigger("capex_efficiency_terms"))  # legacy spec

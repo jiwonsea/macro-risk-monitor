@@ -61,8 +61,12 @@ triggers:
   - id: hyperscaler_capex_tone
     category: coincident
     source: earnings_transcript_nlp
-    series: capex_efficiency_terms
-    description: MS·GOOGL·META·AMZN earnings call에서 'rationalize'·'efficiency'·'discipline' 어휘 등장 빈도
+    series: "MSFT|GOOGL|META|AMZN::rationalize,efficiency,discipline"
+    description: |
+      MS·GOOGL·META·AMZN earnings call에서 'rationalize'·'efficiency'·'discipline' 어휘 등장 빈도.
+      소스는 data/transcripts/{TICKER}/{YYYY-MM-DD}.txt 로컬 파일을 읽어 "키워드 매칭된 기업 수"를
+      반환 (2026-07-02 구현). 임계치를 수치형(red ">= 2" / yellow ">= 1" / green "< 1")으로 바꾸면
+      자동 평가되지만, 전환 여부는 사용자 결정 사항.
     threshold:
       red: "2개사 동시 'rationalize' OR 'efficiency'"
       yellow: "1개사"

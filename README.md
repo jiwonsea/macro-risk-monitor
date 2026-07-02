@@ -13,7 +13,8 @@
 | `run` | `theses/*.yaml` (정형 가설) | HTML 리포트 (트리거 상태표·차트·LLM 해설) |
 | `analyze` | 자연어 한 줄 ("미국 10년물 4.5% 돌파") | LLM이 트리거 골격 생성 → 동일한 HTML 리포트. `--save-thesis`로 YAML 저장 가능 |
 | `pdf` | 기존 HTML | Chrome headless로 PDF 변환 |
-| `dashboard` | — | Streamlit 대시보드 (가설별 트리거 상태·최신 리포트 뷰어, read-only) |
+| `dashboard` | — | Streamlit 대시보드 (가설별 트리거 상태·히스토리 추이·최신 리포트, read-only) |
+| `backtest` | `theses/*.yaml` + 날짜 범위 | as_of를 과거로 돌려 트리거 재평가 → CSV. 과거 재현 가능한 소스(FRED·yfinance·SEC EDGAR·transcript)만 평가, 나머지는 UNKNOWN 명시 |
 
 ## Rule of three
 
@@ -75,6 +76,7 @@ macro-risk-monitor/
 | yfinance | 주가·ETF·^VIX | ✓ | — |
 | SEC EDGAR | Company Facts (XBRL line items) | ✓ | `SEC_USER_AGENT` 권장 |
 | News RSS | 키워드 매칭 기사 카운트 (Bloomberg·Reuters·CNBC) | ✓ | — |
+| earnings_transcript_nlp | 로컬 transcript 키워드 분석 (`data/transcripts/{TICKER}/{YYYY-MM-DD}.txt`) | — (사용자 파일) | — |
 | manual_override | Hiive·Forge·FINRA TRACE·DRAMeXchange | — | `data/manual_override/{thesis}.yaml` 직접 작성 |
 
 ## AI 협업 안내

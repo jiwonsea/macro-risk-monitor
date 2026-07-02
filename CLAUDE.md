@@ -12,6 +12,12 @@
 
 ## Session log
 
+### 2026-07-02 (round 8) — 백테스트 프레임워크 + earnings_transcript_nlp (Phase 2 잔여 2건, 사용자 위임 판단)
+- **`macro-risk backtest <thesis> --start --end [--step 7]`** (`pipeline/backtest.py`): as_of sweep → fetch+evaluate+rule_of_three (LLM 미사용) → CSV(`reports/backtest/{name}.csv`) + action 전환 요약. **정직성 계약**: 과거 재현 가능한 소스(FRED/yfinance/SEC EDGAR/transcript)만 평가, manual_override(현재값을 과거인 척 반환)·news_rss(아카이브 없음)는 "not backtestable" UNKNOWN 명시. 전 트리거 UNKNOWN인 날짜 비율을 요약에 노출.
+- **`sources/earnings_transcript_nlp.py`**: 데이터 소스 결정 — 유료 API(retail-accessible 위배)·스크레이핑(재현성 위배) 배제, `data/transcripts/{TICKER}/{YYYY-MM-DD}*.txt` 로컬 파일 분석. series 스펙 `TICKERS::keywords`, value = 키워드 매칭된 기업 수("N개사" 임계 의미와 호환). 날짜 prefix 덕에 as_of-aware → backtestable. `hyperscaler_capex_tone` series를 새 스펙으로 갱신 (정성 임계치는 사용자 결정 영역이라 유지 — 수치 전환 권고만 note).
+- **cli.py `__main__` 가드 중복 버그 fix**: 가드가 `_cmd_backtest`/`_cmd_dashboard` 정의 *앞에* 있어 `python -m macro_risk_monitor.cli dashboard`가 NameError — 커밋된 dashboard 서브커맨드도 동일 버그였음 (pip 설치 entry point는 무관). smoke run으로 발견, 가드 1개로 정리.
+- 테스트 111 (backtest 4건 + transcript 3건 추가), ruff clean.
+
 ### 2026-07-02 (round 7) — run 히스토리 누적 + 대시보드 추이 차트
 - `thesis_state.append_history/load_history`: `.cache/state/{name}_history.jsonl` append-only 로그 (run당 1줄, 트리거별 status+numeric value; display_value 우선, NaN drop). orchestrator가 snapshot save 직후 기록 — **백테스트의 데이터 축적 기반**이기도 함.
 - 대시보드에 History 섹션: status 타임라인(이모지 행렬) + 트리거별 value 추이 line chart. data-prep(`history_frame`/`status_timeline_rows`)은 streamlit 불필요, corrupt JSONL 라인은 skip.
@@ -119,8 +125,8 @@
 ## Phase 2 backlog
 
 - ~~`sources/news_rss.py` (Bloomberg·Reuters·CNBC) + 키워드 매칭~~ ✅ 2026-06-29 (소스 + ai_circular_revenue 연결 완료)
-- `sources/earnings_transcript_nlp.py` (CFO 어휘 변화 자동 탐지)
-- 백테스트: 2024~26 데이터로 ai_circular_revenue 가설 재현 가능성 평가
+- ~~`sources/earnings_transcript_nlp.py`~~ ✅ 2026-07-02 (로컬 transcript 분석; CFO 어휘 *추이* 비교는 추후)
+- ~~백테스트 프레임워크~~ ✅ 2026-07-02 (`backtest` CLI; ai_circular_revenue 실제 재현 평가는 manual_override 과거값 입력 후 가능)
 - ~~Streamlit 대시보드~~ ✅ 2026-07-02 (read-only 뷰어 + 히스토리 추이 차트)
 - ~~GitHub Actions daily cron~~ ✅ 2026-06-29 (`daily.yml`) + ~~Slack 알림~~ ✅ 2026-07-02 (webhook, secret opt-in) / 이메일 알림 (미구현)
 - ~~GitHub Pages 자동 배포 (포트폴리오 공개 surface)~~ ✅ 2026-06-29 (`daily.yml` → docs/ Pages)

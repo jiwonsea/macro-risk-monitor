@@ -76,6 +76,16 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("dashboard", help="launch the read-only Streamlit dashboard")
 
+    p_bt = sub.add_parser(
+        "backtest",
+        help="replay a thesis over a historical date range (no LLM)",
+    )
+    p_bt.add_argument("thesis", type=Path)
+    p_bt.add_argument("--start", required=True, help="YYYY-MM-DD")
+    p_bt.add_argument("--end", required=True, help="YYYY-MM-DD")
+    p_bt.add_argument("--step", type=int, default=7, help="days between evaluations (default 7)")
+    p_bt.add_argument("--output", type=Path, default=None, help="CSV path; default reports/backtest/{name}.csv")
+
     p_draft = sub.add_parser(
         "draft-thesis",
         help="hypothesis -> auto-select & verify data sources -> thesis YAML",
@@ -103,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_draft_thesis(args)
     if args.command == "dashboard":
         return _cmd_dashboard()
+    if args.command == "backtest":
+        return _cmd_backtest(args)
     parser.error("unreachable")
     return 2
 
@@ -275,8 +287,20 @@ def _save_yaml(risk, path: Path) -> None:
         yaml.safe_dump(payload, fh, allow_unicode=True, sort_keys=False)
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def _cmd_backtest(args: argparse.Namespace) -> int:
+    from datetime import date as date_cls
+
+    from .pipeline.backtest import run_backtest, summarize, write_csv
+
+    risk = load_risk(args.thesis)
+    start = date_cls.fromisoformat(args.start)
+    end = date_cls.fromisoformat(args.end)
+    rows = run_backtest(risk, start, end, step_days=args.step)
+    out = args.output or (cfg.REPORTS_DIR / "backtest" / f"{risk.name}.csv")
+    write_csv(rows, risk, out)
+    print(summarize(rows))
+    print(f"csv: {out}")
+    return 0
 
 
 def _cmd_dashboard() -> int:
