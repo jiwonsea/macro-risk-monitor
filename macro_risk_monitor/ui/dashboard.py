@@ -12,6 +12,7 @@ invariant). Launch with:
 
 from __future__ import annotations
 
+import csv
 import json
 from datetime import datetime
 from pathlib import Path
@@ -120,6 +121,56 @@ def status_timeline_rows(frame: dict) -> list[dict]:
     return rows
 
 
+# Ordinal severity used to plot the categorical action as a line chart.
+_ACTION_LEVEL = {
+    "no_signal": 0,
+    "monitor": 1,
+    "hedge_increase": 2,
+    "defensive_position": 3,
+}
+
+
+def backtest_frame(risk_name: str, backtest_dir: Path | None = None) -> dict | None:
+    """Read `reports/backtest/{name}.csv` into a chart-ready dict.
+
+    Returns {"dates": [str], "actions": [str], "levels": [int]} or None when
+    no CSV exists / no valid rows. Only the as_of + action columns are read,
+    so the frame stays valid even if the thesis trigger set changed since the
+    backtest was written. Rows with unknown actions are skipped (same
+    corrupt-line tolerance as load_history).
+    """
+    d = backtest_dir or (cfg.REPORTS_DIR / "backtest")
+    path = d / f"{risk_name}.csv"
+    if not path.exists():
+        return None
+    dates: list[str] = []
+    actions: list[str] = []
+    levels: list[int] = []
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            as_of = (row.get("as_of") or "").strip()
+            action = (row.get("action") or "").strip()
+            if not as_of or action not in _ACTION_LEVEL:
+                continue
+            dates.append(as_of)
+            actions.append(action)
+            levels.append(_ACTION_LEVEL[action])
+    if not dates:
+        return None
+    return {"dates": dates, "actions": actions, "levels": levels}
+
+
+def action_transitions(frame: dict) -> list[dict]:
+    """One row per action change (oldest -> newest), incl. the initial action."""
+    rows: list[dict] = []
+    prev: str | None = None
+    for as_of, action in zip(frame["dates"], frame["actions"]):
+        if action != prev:
+            rows.append({"as_of": as_of, "action": action})
+            prev = action
+    return rows
+
+
 def _safe_status(value: str) -> Status:
     try:
         return Status(value)
@@ -193,6 +244,17 @@ def main() -> None:  # pragma: no cover - thin streamlit glue
                     ]
                 }
             )
+
+    bt = backtest_frame(risk.name)
+    if bt:
+        st.subheader("Backtest")
+        st.caption(
+            f"reports/backtest/{risk.name}.csv — action level: "
+            "0 no_signal · 1 monitor · 2 hedge_increase · 3 defensive_position"
+        )
+        st.line_chart({"action_level": bt["levels"]})
+        st.markdown("**Action transitions**")
+        st.dataframe(action_transitions(bt), use_container_width=True)
 
     report = latest_report(risk.name)
     if report:

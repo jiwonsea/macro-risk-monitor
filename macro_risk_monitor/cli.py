@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -50,6 +51,16 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--output", type=Path, default=None)
     p_run.add_argument("--skip-llm", action="store_true")
     p_run.add_argument("--pdf", action="store_true", help="also render PDF")
+    p_run.add_argument(
+        "--as-of",
+        dest="as_of",
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "replay a historical date: backtestable sources only "
+            "(others UNKNOWN); state/history not updated"
+        ),
+    )
 
     p_an = sub.add_parser("analyze", help="ad-hoc natural-language risk input")
     p_an.add_argument("text", help="risk hypothesis in one to a few sentences")
@@ -120,12 +131,19 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    from .pipeline.orchestrator import report_stamp
+
     risk = load_risk(args.thesis)
-    report = run_pipeline(risk, out_html=args.output, skip_llm=args.skip_llm)
+    as_of = date.fromisoformat(args.as_of) if args.as_of else None
+    report = run_pipeline(
+        risk, out_html=args.output, skip_llm=args.skip_llm, as_of=as_of
+    )
+    if as_of is not None:
+        print(f"as_of: {as_of} (historical replay — state/history not updated)")
     print(f"action: {report.decision.action}")
     print(f"summary: {report.decision.summary}")
     if args.pdf:
-        html_path = args.output or default_html_path(risk.name, report.generated_at)
+        html_path = args.output or default_html_path(risk.name, report_stamp(report))
         pdf = html_to_pdf(html_path)
         if pdf:
             print(f"pdf: {pdf}")

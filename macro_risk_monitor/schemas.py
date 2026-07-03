@@ -204,3 +204,5 @@ class Report(BaseModel):
     citation_check: CitationCheck
     generated_at: datetime
     llm_model: str
+    # Historical replay timestamp (`run --as-of`); None means a live run.
+    as_of: date | None = None

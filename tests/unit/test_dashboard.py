@@ -111,3 +111,43 @@ def test_load_history_skips_corrupt_lines(tmp_path: Path):
     entries = load_history(tmp_path, "foo")
     assert [e["generated_at"] for e in entries] == ["t1", "t2"]
     assert load_history(tmp_path, "foo", limit=1)[0]["generated_at"] == "t2"
+
+
+def test_backtest_frame_missing_returns_none(tmp_path: Path):
+    from macro_risk_monitor.ui.dashboard import backtest_frame
+
+    assert backtest_frame("nope", backtest_dir=tmp_path) is None
+
+
+def test_backtest_frame_parses_csv_and_transitions(tmp_path: Path):
+    from macro_risk_monitor.ui.dashboard import action_transitions, backtest_frame
+
+    (tmp_path / "foo.csv").write_text(
+        "as_of,action,a_status,a_value\n"
+        "2026-01-01,no_signal,green,1.0\n"
+        "2026-01-08,monitor,yellow,2.0\n"
+        "2026-01-15,bogus_action,red,3.0\n"  # unknown action -> skipped
+        "2026-01-22,monitor,yellow,2.5\n"
+        "2026-01-29,defensive_position,red,4.0\n",
+        encoding="utf-8",
+    )
+    frame = backtest_frame("foo", backtest_dir=tmp_path)
+    assert frame is not None
+    assert frame["dates"] == ["2026-01-01", "2026-01-08", "2026-01-22", "2026-01-29"]
+    assert frame["levels"] == [0, 1, 1, 3]
+
+    trans = action_transitions(frame)
+    assert [(t["as_of"], t["action"]) for t in trans] == [
+        ("2026-01-01", "no_signal"),
+        ("2026-01-08", "monitor"),
+        ("2026-01-29", "defensive_position"),
+    ]
+
+
+def test_backtest_frame_all_rows_invalid_returns_none(tmp_path: Path):
+    from macro_risk_monitor.ui.dashboard import backtest_frame
+
+    (tmp_path / "foo.csv").write_text(
+        "as_of,action\n,\n2026-01-01,garbage\n", encoding="utf-8"
+    )
+    assert backtest_frame("foo", backtest_dir=tmp_path) is None

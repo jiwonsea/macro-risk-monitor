@@ -12,6 +12,13 @@
 
 ## Session log
 
+### 2026-07-03 (round 10) — run --as-of 플래그 + 대시보드 백테스트 연동
+- **push 미실행 발견**: origin/main이 로컬 대비 9커밋 뒤 — 6/29 CI·daily.yml 커밋부터 미push라 **daily cron이 한 번도 실행된 적 없음**. 샌드박스엔 git 자격증명이 없어 사용자 로컬 `git push origin main` 필요.
+- **`run --as-of YYYY-MM-DD`**: `_fetch_and_evaluate(as_of=)` — backtest와 동일 정직성 계약 (`BACKTESTABLE_SOURCES` 재사용; manual_override/news_rss는 "not backtestable" UNKNOWN). replay는 state snapshot·history JSONL을 건드리지 않음 (라이브 기록 오염 방지). `Report.as_of` 필드 + HTML 배너, 기본 파일명은 as_of 날짜 stamp(`report_stamp()`)로 오늘 리포트 clobber 방지 — `--pdf` 경로도 동일 stamp 공유.
+- **대시보드 Backtest 섹션**: `backtest_frame`이 `reports/backtest/{name}.csv`의 as_of+action 열만 읽어(백테스트 이후 트리거 세트가 바뀌어도 유효) action ordinal(0~3) line chart + transition 테이블. CSV 부재/전행 무효면 None → 섹션 미표시. data-prep은 기존 패턴대로 streamlit-free.
+- 잔여 수동 정리 재확인: `.git/*.stale*` 8개 + `data/transcripts/MSFT/DELETE_ME-*`는 여전히 샌드박스에서 `Operation not permitted` — 사용자 수동 삭제 필요.
+- 테스트 118 (dashboard 3건 + as_of 통합 2건 추가), ruff clean.
+
 ### 2026-07-02 (round 9) — sec_edgar 기간 혼합 fix + CLI 스크립트 회귀 테스트 + repo 위생
 - **sec_edgar `_latest_value` fix**: companyfacts는 같은 end 날짜에 Q4(3개월)와 FY(12개월) 값이 공존 — 기존엔 순회 순서에 따라 연간 누적값이 분기 트리거에 유입될 수 있었음. (end DESC, duration ASC) 정렬로 최단 기간 우선. 테스트 `test_sec_edgar_prefers_quarterly_over_annual_same_end`.
 - **`tests/unit/test_cli_entry.py`**: `python -m macro_risk_monitor.cli --help` subprocess 실행 — round 8의 `__main__` 가드 앞 정의 버그류 회귀 방지.

@@ -6,6 +6,13 @@
   <small>{{ report.risk.name }} · {{ report.generated_at.strftime("%Y-%m-%d %H:%M") }}</small>
 </h1>
 
+{% if report.as_of %}
+<p style="background: #fef3c7; border: 1px solid #d97706; border-radius: 4px; padding: 6pt 8pt; font-size: 9.5pt;">
+  ⏳ <strong>{{ report.as_of.isoformat() }}</strong> 시점 재현 리포트 (<code>run --as-of</code>) —
+  재현 불가 소스는 UNKNOWN 처리, 상태 스냅샷/히스토리는 갱신되지 않음.
+</p>
+{% endif %}
+
 <div class="exec-card">
   <span class="action {{ report.decision.action }}">{{ report.decision.action.replace("_", " ").upper() }}</span>
   <p style="margin: 8pt 0 0 0;">{{ report.decision.summary }}</p>
