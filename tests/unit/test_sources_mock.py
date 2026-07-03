@@ -476,3 +476,33 @@ def test_transcript_bad_series_spec(tmp_path: Path):
     tmp_path.mkdir(exist_ok=True)
     with pytest.raises(FetchError):
         src.fetch(_transcript_trigger("capex_efficiency_terms"))  # legacy spec
+
+
+# ---------------------------------------------------------------------------
+# sec_edgar
+# ---------------------------------------------------------------------------
+def test_sec_edgar_prefers_quarterly_over_annual_same_end():
+    """Q4 (3-month) and FY (12-month) share the same end date in companyfacts;
+    a quarterly trigger must get the 3-month figure, not the annual cumulative."""
+    from macro_risk_monitor.sources.sec_edgar import SecEdgarSource
+
+    facts = {
+        "facts": {
+            "us-gaap": {
+                "Revenues": {
+                    "units": {
+                        "USD": [
+                            {"start": "2025-01-01", "end": "2025-12-31", "val": 400},
+                            {"start": "2025-10-01", "end": "2025-12-31", "val": 100},
+                            {"start": "2025-07-01", "end": "2025-09-30", "val": 90},
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    val, end = SecEdgarSource._latest_value(facts, "Revenues", date(2026, 1, 31))
+    assert (val, end) == (100.0, date(2025, 12, 31))
+    # as_of cap falls back to the previous quarter
+    val, end = SecEdgarSource._latest_value(facts, "Revenues", date(2025, 10, 15))
+    assert (val, end) == (90.0, date(2025, 9, 30))

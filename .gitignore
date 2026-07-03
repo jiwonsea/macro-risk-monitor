@@ -46,3 +46,10 @@ notes/codex_handoffs/*_review_patch.yaml
 # Local agent config / session scratch (redundant with CLAUDE.md; not for the published portfolio)
 AGENTS.md
 notes/next_session_prompt.md
+
+# User-supplied earnings transcripts — likely copyrighted; never publish
+data/transcripts/**/*.txt
+data/transcripts/**/*.txt.*
+
+# Backtest output — regenerate with `macro-risk backtest`
+reports/backtest/

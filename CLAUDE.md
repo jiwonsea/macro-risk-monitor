@@ -12,6 +12,12 @@
 
 ## Session log
 
+### 2026-07-02 (round 9) — sec_edgar 기간 혼합 fix + CLI 스크립트 회귀 테스트 + repo 위생
+- **sec_edgar `_latest_value` fix**: companyfacts는 같은 end 날짜에 Q4(3개월)와 FY(12개월) 값이 공존 — 기존엔 순회 순서에 따라 연간 누적값이 분기 트리거에 유입될 수 있었음. (end DESC, duration ASC) 정렬로 최단 기간 우선. 테스트 `test_sec_edgar_prefers_quarterly_over_annual_same_end`.
+- **`tests/unit/test_cli_entry.py`**: `python -m macro_risk_monitor.cli --help` subprocess 실행 — round 8의 `__main__` 가드 앞 정의 버그류 회귀 방지.
+- **repo 위생**: `.gitignore`의 `.env.example` 오등재 제거(README quick start와 모순), `data/transcripts/**/*.txt` ignore(저작권 자료 공개 방지) + `data/transcripts/README.md` 포맷 문서, `reports/backtest/` ignore.
+- 테스트 113, ruff clean.
+
 ### 2026-07-02 (round 8) — 백테스트 프레임워크 + earnings_transcript_nlp (Phase 2 잔여 2건, 사용자 위임 판단)
 - **`macro-risk backtest <thesis> --start --end [--step 7]`** (`pipeline/backtest.py`): as_of sweep → fetch+evaluate+rule_of_three (LLM 미사용) → CSV(`reports/backtest/{name}.csv`) + action 전환 요약. **정직성 계약**: 과거 재현 가능한 소스(FRED/yfinance/SEC EDGAR/transcript)만 평가, manual_override(현재값을 과거인 척 반환)·news_rss(아카이브 없음)는 "not backtestable" UNKNOWN 명시. 전 트리거 UNKNOWN인 날짜 비율을 요약에 노출.
 - **`sources/earnings_transcript_nlp.py`**: 데이터 소스 결정 — 유료 API(retail-accessible 위배)·스크레이핑(재현성 위배) 배제, `data/transcripts/{TICKER}/{YYYY-MM-DD}*.txt` 로컬 파일 분석. series 스펙 `TICKERS::keywords`, value = 키워드 매칭된 기업 수("N개사" 임계 의미와 호환). 날짜 prefix 덕에 as_of-aware → backtestable. `hyperscaler_capex_tone` series를 새 스펙으로 갱신 (정성 임계치는 사용자 결정 영역이라 유지 — 수치 전환 권고만 note).

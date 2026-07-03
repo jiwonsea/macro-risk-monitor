@@ -115,7 +115,11 @@ class SecEdgarSource(DataSource):
             if not concept_block:
                 continue
             units = concept_block.get("units", {})
-            best: tuple[float, date] | None = None
+            # (end_date DESC, duration ASC): flow concepts like Revenues carry
+            # both the Q4 3-month and the FY 12-month figure with the *same*
+            # end date — prefer the shortest duration so quarterly triggers
+            # never silently pick up an annual cumulative value.
+            best: tuple[float, date, int] | None = None
             for entries in units.values():
                 for entry in entries:
                     end_str = entry.get("end")
@@ -127,8 +131,19 @@ class SecEdgarSource(DataSource):
                     val = entry.get("val")
                     if val is None:
                         continue
-                    if best is None or end_d > best[1]:
-                        best = (float(val), end_d)
+                    start_str = entry.get("start")
+                    duration = 0
+                    if start_str:
+                        try:
+                            duration = (end_d - date.fromisoformat(start_str)).days
+                        except ValueError:
+                            duration = 0
+                    if (
+                        best is None
+                        or end_d > best[1]
+                        or (end_d == best[1] and duration < best[2])
+                    ):
+                        best = (float(val), end_d, duration)
             if best:
-                return best
+                return best[0], best[1]
         return None, None
