@@ -1,0 +1,47 @@
+{
+  "as_of": "2026-07-28T08:35:36Z",
+  "sep_2026_yearend_median": {
+    "value": 3.8,
+    "as_of": "2026-06-17",
+    "label": "2026 year-end median of appropriate policy (SEP)",
+    "url": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20260617.htm"
+  },
+  "spr_release": {
+    "planned_mbbl": 172,
+    "released_through_2026_04_24_mbbl": 17.5,
+    "stock_at_2026_04_24_mbbl": 397.9,
+    "note": "172M=계획량, 17.5M=4/24까지 실제 방출. stock축에 그리지 말 것.",
+    "url": "https://www.eia.gov/todayinenergy/detail.php?id=67625"
+  },
+  "cc_delinq_equifax_note": {
+    "value": 13.12,
+    "note": "정의가 다른 Equifax subprime/severe 지표 — DRCCLACBS(≈2.9%)와 혼동 금지. 차트에 그리지 말 것."
+  },
+  "oil_events": [
+    {
+      "date": "2026-02-28",
+      "label": "US-Iran 개전",
+      "url": "https://www.centcom.mil/MEDIA/PUBLIC-RELEASES/Article/4418396/us-forces-launch-operation-epic-fury/"
+    },
+    {
+      "date": "2026-04-08",
+      "label": "휴전",
+      "url": "https://www.un.org/sg/en/content/highlight/2026-04-08.html"
+    },
+    {
+      "date": "2026-07-08",
+      "label": "재점화(미국 타격)",
+      "url": "https://www.whitehouse.gov/videos/president-donald-j-trump-provides-an-update-on-u-s-forces-retaliatory-strikes-against-iran/"
+    }
+  ],
+  "oil_peak_derived": {
+    "brent_peak_date": "2026-04-07",
+    "brent_peak_value": 138.21,
+    "wti_peak_date": "2026-04-07",
+    "wti_peak_value": 114.58
+  },
+  "midterm": {
+    "date": "2026-11-03",
+    "label": "미국 중간선거"
+  }
+}

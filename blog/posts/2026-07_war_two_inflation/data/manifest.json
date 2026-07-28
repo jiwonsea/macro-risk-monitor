@@ -1,0 +1,133 @@
+{
+  "retrieved_at": "2026-07-28T08:35:36Z",
+  "series": [
+    {
+      "series": "DFEDTARU",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFEDTARU&cosd=2023-01-01",
+      "freq": "D",
+      "last_obs": "2026-07-27",
+      "last_value": 3.75
+    },
+    {
+      "series": "DFEDTARL",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFEDTARL&cosd=2023-01-01",
+      "freq": "D",
+      "last_obs": "2026-07-27",
+      "last_value": 3.5
+    },
+    {
+      "series": "PCEPILFE",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PCEPILFE&cosd=2021-01-01",
+      "freq": "MS",
+      "last_obs": "2026-05-01",
+      "last_value": 130.082
+    },
+    {
+      "series": "CPIAUCSL",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL&cosd=2021-01-01",
+      "freq": "irregular",
+      "last_obs": "2026-06-01",
+      "last_value": 332.568
+    },
+    {
+      "series": "CPILFESL",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPILFESL&cosd=2021-01-01",
+      "freq": "irregular",
+      "last_obs": "2026-06-01",
+      "last_value": 336.065
+    },
+    {
+      "series": "DCOILWTICO",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILWTICO&cosd=2026-01-01",
+      "freq": "irregular",
+      "last_obs": "2026-07-20",
+      "last_value": 84.38
+    },
+    {
+      "series": "DCOILBRENTEU",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU&cosd=2026-01-01",
+      "freq": "irregular",
+      "last_obs": "2026-07-20",
+      "last_value": 86.99
+    },
+    {
+      "series": "WCSSTUS1",
+      "source": "EIA",
+      "url": "https://www.eia.gov/dnav/pet/hist_xls/WCSSTUS1w.xls",
+      "freq": "weekly",
+      "units": "million barrels",
+      "last_obs": "2026-07-17",
+      "last_value": 311.447
+    },
+    {
+      "series": "NYFED_SCE",
+      "source": "NY Fed",
+      "url": "https://www.newyorkfed.org/medialibrary/Interactives/sce/sce/downloads/data/FRBNY-SCE-Data.xlsx",
+      "freq": "monthly",
+      "last_obs": "2026-06-01",
+      "last_value": {
+        "sce_1y": 3.673457145690918,
+        "sce_3y": 3.336173057556152,
+        "sce_5y": 3.0
+      },
+      "sheets": {
+        "1y_3y": "Inflation expectations",
+        "5y": "Five-year ahead Infl Exp",
+        "gas": "Commodity expectations"
+      },
+      "cols_mapped": {
+        "1y": "Median one-year ahead expected inflation rate",
+        "3y": "Median three-year ahead expected inflation rate",
+        "5y": "Median five-year ahead expected inflation rate",
+        "gas": "Gas"
+      }
+    },
+    {
+      "series": "T5YIFR",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=T5YIFR&cosd=2023-01-01",
+      "freq": "irregular",
+      "last_obs": "2026-07-27",
+      "last_value": 2.24
+    },
+    {
+      "series": "DRCCLACBS",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DRCCLACBS&cosd=2015-01-01",
+      "freq": "QS-OCT",
+      "last_obs": "2026-01-01",
+      "last_value": 2.92
+    },
+    {
+      "series": "UNRATE",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE&cosd=2023-01-01",
+      "freq": "irregular",
+      "last_obs": "2026-06-01",
+      "last_value": 4.2
+    },
+    {
+      "series": "PAYEMS",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PAYEMS&cosd=2022-01-01",
+      "freq": "MS",
+      "last_obs": "2026-06-01",
+      "last_value": 158984.0
+    },
+    {
+      "series": "USEPUINDXM",
+      "source": "FRED",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=USEPUINDXM&cosd=2015-01-01",
+      "freq": "MS",
+      "last_obs": "2026-06-01",
+      "last_value": 198.04987
+    }
+  ]
+}
