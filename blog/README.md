@@ -57,4 +57,4 @@ blog/
 - [`2026-07-28_blog_repo_layout_review_feedback.md`](../notes/codex_handoffs/2026-07-28_blog_repo_layout_review_feedback.md) — Codex 반박
 - [`2026-07-28_blog_repo_layout_synthesis.md`](../notes/codex_handoffs/2026-07-28_blog_repo_layout_synthesis.md) — 종합 (C-lite hybrid 채택)
 
-공용 모듈 `_lib/` 생성 여부는 [`2026-07-28_blog_lib_decision_handoff.md`](../notes/codex_handoffs/2026-07-28_blog_lib_decision_handoff.md)에서 **별도 결정 대기 중**이다.
+공용 모듈 `_lib/`은 **만들지 않기로 결정**했다([핸드오프](../notes/codex_handoffs/2026-07-28_blog_lib_decision_handoff.md) · [Codex 판정](../notes/codex_handoffs/2026-07-28_blog_lib_decision_handoff_feedback.md)). 활성 chart builder는 글 B 하나뿐이라 rule of three가 성립하지 않고, 실제 문제였던 폰트 경로 하드코딩은 글 B 안에서 후보 순회로 고쳤다. **재검토 트리거**: 새 글의 활성 chart builder가 글 B의 폰트 탐색 또는 Okabe-Ito/base rcParams를 실제로 복사해야 할 때, 중복된 최소 책임만 추출한다.
