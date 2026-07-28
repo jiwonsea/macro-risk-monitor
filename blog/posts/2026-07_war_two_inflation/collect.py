@@ -244,6 +244,55 @@ def s7_labor():
     return df
 
 
+# ---------- S10 노동공급 ----------
+def s10_laborsupply():
+    """실업률이 '수요 강세'인지 '공급 축소'인지 가르는 최소 지표 묶음.
+
+    실업률만으로는 분자(실업자)가 줄어서 내린 건지 분모(경제활동인구)가
+    줄어서 내린 건지 구별되지 않는다. 고용률(EMRATIO)은 분모가 전체 인구라
+    그 구별이 된다. 실업률↓ + 고용률↓ = 공급 축소.
+    """
+    un = fred("UNRATE", "2024-01-01")["UNRATE"]
+    emr = fred("EMRATIO", "2024-01-01")["EMRATIO"]          # 고용률(취업자/인구)
+    civ = fred("CIVPART", "2024-01-01")["CIVPART"]           # 경제활동참가율
+    prime = fred("LNS11300060", "2024-01-01")["LNS11300060"]  # 25~54세 참가율
+    u6 = fred("U6RATE", "2024-01-01")["U6RATE"]
+    df = pd.DataFrame({
+        "unrate": un, "emratio": emr, "civpart": civ,
+        "primeage_civpart": prime, "u6rate": u6,
+    })
+    df = df[df.index >= "2024-01-01"].dropna(how="all")
+    save(df, "s10_laborsupply.csv")
+    return df
+
+
+# ---------- S11 노동공급 구성 + 임금 ----------
+def s11_laborcomposition():
+    """공급 축소의 '원인'과 '인플레 전이'를 각각 반증 가능하게 만드는 묶음.
+
+    - 구직단념설 반증용: NILFWJN(일자리를 원하는 비경활인구)이 늘지 않으면 단념이 아니다.
+    - 인구설 확인용: 외국출생 경활인구 '수준'이 줄고 '참가율'은 평평하면 인구 감소다.
+    - 임금 전이 반증용: 공급이 줄어도 시간당임금이 가속되지 않으면
+      '노동비용발 서비스 인플레' 경로는 성립하지 않는다.
+    """
+    clf = fred("CLF16OV", "2024-01-01")["CLF16OV"]            # 경활인구 총계(SA)
+    fb = fred("LNU01073395", "2024-01-01")["LNU01073395"]     # 외국출생 경활인구(NSA)
+    fbr = fred("LNU01373395", "2024-01-01")["LNU01373395"]    # 외국출생 참가율(NSA)
+    nilf = fred("NILFWJN", "2024-01-01")["NILFWJN"]           # 일자리 원하는 비경활인구
+    ahe = fred("CES0500000003", "2023-01-01")["CES0500000003"]  # 시간당임금(민간 전체)
+    df = pd.DataFrame({
+        "clf_total_sa_k": clf,
+        "clf_foreignborn_nsa_k": fb,
+        "foreignborn_lfpr_nsa": fbr,
+        "nilf_want_job_k": nilf,
+        "ahe_usd": ahe,
+        "ahe_yoy_pct": yoy(ahe),
+    })
+    df = df[df.index >= "2024-06-01"].dropna(how="all")
+    save(df, "s11_laborcomposition.csv")
+    return df
+
+
 # ---------- S8 EPU ----------
 def s8_epu():
     e = fred("USEPUINDXM", "2015-01-01")
@@ -270,6 +319,8 @@ def main():
     s6 = s6_consumer()
     s7 = s7_labor()
     s8_epu()
+    s10 = s10_laborsupply()
+    s11 = s11_laborcomposition()
 
     # --- 수동값 + 이벤트(annotations) : 출처·as-of 명시, 값은 시계열 점 아님 ---
     annotations = {
@@ -313,6 +364,25 @@ def main():
         ("UNRATE June≈4.2", lambda: near(s7["unrate"].loc["2026-06"].iloc[0], 4.2, 0.15)),
         ("payroll June≈+57k", lambda: near(s7["payems_mom_k"].loc["2026-06"].iloc[0], 57, 20)),
         ("DRCCLACBS latest≈2.92", lambda: near(s6["cc_delinq"].iloc[-1], 2.92, 0.2)),
+        # --- 본문 '완충은 착시' 주장의 근거. 이 셋이 깨지면 결론을 되돌려야 한다. ---
+        ("EMRATIO June≈59.0", lambda: near(s10["emratio"].loc["2026-06"].iloc[0], 59.0, 0.2)),
+        ("CIVPART June≈61.5", lambda: near(s10["civpart"].loc["2026-06"].iloc[0], 61.5, 0.2)),
+        # 실업률과 고용률이 '같이' 내려가야 공급축소 해석이 성립한다. 갈라지면 재검토.
+        ("UNRATE·EMRATIO 동반하락(2025-11→2026-06)", lambda: (
+            s10["unrate"].loc["2026-06"].iloc[0] < s10["unrate"].loc["2025-11"].iloc[0]
+            and s10["emratio"].loc["2026-06"].iloc[0] < s10["emratio"].loc["2025-11"].iloc[0]
+        )),
+        # 임금이 가속되면 '노동공급 축소 → 서비스 인플레' 경로가 살아난다 → 본문 수정 필요
+        ("AHE YoY 미가속(2026-06 < 2025-06)", lambda: (
+            s11["ahe_yoy_pct"].loc["2026-06"].iloc[0] < s11["ahe_yoy_pct"].loc["2025-06"].iloc[0]
+        )),
+        # 구직단념설 반증: 일자리 원하는 비경활인구가 크게 늘지 않아야 한다
+        ("NILFWJN YoY 증가 <300k", lambda: abs(
+            s11["nilf_want_job_k"].loc["2026-06"].iloc[0]
+            - s11["nilf_want_job_k"].loc["2025-06"].iloc[0]) < 300),
+        # Core PCE > Core CPI 역전 지속 여부 (본문 4장)
+        ("Core PCE > Core CPI 역전 유지", lambda:
+            s2["core_pce_yoy"].dropna().iloc[-1] > s2["cpi_core_yoy"].dropna().iloc[-1]),
     ]
     if sce is not None and "sce_1y" in sce:
         checks.append(

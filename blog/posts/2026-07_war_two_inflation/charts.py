@@ -220,8 +220,8 @@ def s7():
     dlabel(a2,d.index[-1],d.payems_mom_k.iloc[-1],f" +{d.payems_mom_k.iloc[-1]:.0f}k",GREEN,fs=13.5,va="bottom")
     style(a2); a2.set_ylabel("월간 고용증감 (천명)",fontsize=13.5,color=SUB); a2.axhline(0,color="#cccccc",lw=1)
     a2.xaxis.set_major_locator(mdates.YearLocator()); a2.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    title(fig,"⑦ 완충: 노동은 아직 견조",
-          "실업률 4.2%, 6월 고용 +57k — 이 완충이 '아직 base가 아니다'의 근거이자 domino의 트리거(꺾이면 activate)")
+    title(fig,"⑦ 표면의 완충 — 실업률 4.2%, 고용 +57k",
+          "고용 증가폭은 4~6월 석 달 연속 축소(3월 214k → 148k → 129k → 57k) · 실업률이 왜 내렸는지는 차트 ⑩에서 분해한다")
     foot(fig,"출처: FRED UNRATE, PAYEMS(월간 차분=고용증감)")
     save(fig,"S7_labor.png")
 
@@ -257,7 +257,7 @@ def s9():
         ("WTI / Brent",f"{oil.wti.iloc[-1]:.0f} / {oil.brent.iloc[-1]:.0f}","피크 대비 하락",BLUE),
         ("SPR 재고",f"{spr:.0f}M","1983년래 최저",ORANGE),
         ("카드 연체율",f"{cc:.2f}%","완만(tail)",GREEN),
-        ("실업률 / 고용",f"{lab.unrate.iloc[-1]:.1f}% / +{lab.payems_mom_k.iloc[-1]:.0f}k","완충 견조",BLUE),
+        ("실업률 / 고용",f"{lab.unrate.iloc[-1]:.1f}% / +{lab.payems_mom_k.iloc[-1]:.0f}k","완충은 착시(참가율↓)",ORANGE),
         ("정책 불확실성",f"{epu:.0f}","정상범위 상단",PURPLE),
     ]
     fig=plt.figure(figsize=(12.5,8.2)); fig.subplots_adjust(top=0.82,bottom=0.08,left=0.04,right=0.96)
@@ -274,6 +274,73 @@ def s9():
     foot(fig,"출처: FRED·EIA·NY Fed·Fed SEP  ·  종합: 사용자 2-channel × Claude·Codex 검증(2026-07)")
     save(fig,"S9_dashboard.png")
 
-for f in [s1,s2,s3,s4,s5,s6,s7,s8,s9]:
+# ---------------- S10 노동공급 분해 ----------------
+def s10():
+    """실업률 하락이 '수요 강세'인지 '분모 축소'인지 가르는 차트.
+
+    윗칸: 고용률·참가율이 같이 내려간다(= 사람이 빠져나간다).
+    아랫칸: 참가율을 기준월에 고정한 반사실 실업률.
+    반사실은 항등식 U=(참가율-고용률)/참가율로 계산하되, 소수 첫째자리 반올림 때문에
+    공표 실업률과 미세하게 어긋나므로 '기준월에서 실제와 일치'하도록 차분으로 앵커링한다.
+    """
+    d=rd("s10_laborsupply.csv")
+    BASE=pd.Timestamp("2025-11-01")            # 실업률 고점(4.5%) = 비교 기준월
+    civ_base=d.loc[BASE,"civpart"]
+    u_hat_act=(d.civpart-d.emratio)/d.civpart*100
+    u_hat_cf =(civ_base -d.emratio)/civ_base *100
+    u_cf=(d.unrate+(u_hat_cf-u_hat_act))[d.index>=BASE]   # 기준월 이전 구간은 의미가 없어 그리지 않는다
+    fig,(a1,a2)=plt.subplots(2,1,figsize=(12.5,8.6),height_ratios=[1,1],sharex=True)
+    fig.subplots_adjust(top=0.82,bottom=0.10,left=0.07,right=0.84,hspace=0.13)
+
+    a1.plot(d.index,d.civpart,color=PURPLE,lw=2.6)
+    a1.plot(d.index,d.emratio,color=BLUE,lw=2.6)
+    dlabel(a1,d.index[-1],d.civpart.iloc[-1],f" 참가율 {d.civpart.iloc[-1]:.1f}%",PURPLE,fs=14)
+    dlabel(a1,d.index[-1],d.emratio.iloc[-1],f" 고용률 {d.emratio.iloc[-1]:.1f}%",BLUE,fs=14)
+    style(a1); a1.set_ylabel("비율 (%)",fontsize=13.5,color=SUB); a1.set_ylim(58.5,63.2)
+    a1.axvline(BASE,color=MUT,lw=1.1,ls=(0,(3,3)))
+
+    a2.plot(d.index,d.unrate,color=BLUE,lw=2.6)
+    a2.plot(u_cf.index,u_cf,color=VERM,lw=2.4,ls=(0,(5,3)))
+    a2.fill_between(u_cf.index,d.unrate[u_cf.index],u_cf,color=VERM,alpha=0.12,lw=0)
+    dlabel(a2,d.index[-1],d.unrate.iloc[-1],f" 공표 {d.unrate.iloc[-1]:.1f}%",BLUE,fs=14)
+    dlabel(a2,d.index[-1],u_cf.iloc[-1],f" 참가율 고정 시 {u_cf.iloc[-1]:.1f}%",VERM,fs=14)
+    a2.axvline(BASE,color=MUT,lw=1.1,ls=(0,(3,3)))
+    a2.annotate("기준월 2025-11\n(참가율 62.5% 고정)",(BASE,a2.get_ylim()[0]),xytext=(6,8),
+                textcoords="offset points",color=MUT,fontsize=12,ha="left",va="bottom")
+    style(a2); a2.set_ylabel("실업률 (%)",fontsize=13.5,color=SUB)
+    a2.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,7]))
+    a2.xaxis.set_major_formatter(mdates.DateFormatter("%y.%m"))
+    title(fig,"⑩ '완충'은 분자가 아니라 분모가 만든 것",
+          "실업률은 4.5→4.2%로 내렸지만 고용률도 59.6→59.0%로 같이 내렸다 — 취업이 는 게 아니라 사람이 빠졌다")
+    foot(fig,"출처: FRED UNRATE·EMRATIO·CIVPART(모두 SA)  ·  반사실은 항등식 U=(참가율-고용률)/참가율, 기준월에서 공표치와 일치하도록 앵커링")
+    save(fig,"S10_laborsupply.png")
+
+# ---------------- S11 Core PCE − Core CPI 스프레드 ----------------
+def s11():
+    """이 글의 논지에 '유리한' 재료를 원인 미확정 상태로 정직하게 남기는 차트."""
+    d=rd("s2_inflation.csv")
+    sp=(d.core_pce_yoy-d.cpi_core_yoy).dropna()
+    sp=sp[sp.index>=pd.Timestamp("2023-01-01")]
+    fig,ax=plt.subplots(figsize=(12.5,6.8)); fig.subplots_adjust(top=0.79,bottom=0.12,left=0.07,right=0.84)
+    cols=[VERM if v>0 else SKY for v in sp]
+    ax.bar(sp.index,sp,width=22,color=cols,alpha=0.9)
+    ax.axhline(0,color="#999999",lw=1.2)
+    flip=pd.Timestamp("2025-11-01"); war=pd.to_datetime(ann["oil_events"][0]["date"])
+    top=ax.get_ylim()[1]
+    # 두 수직선의 라벨은 서로도, 우측 직접라벨과도 겹치지 않게 위/아래로 나눈다.
+    for x,y,lab,c,dx,ha in [(flip,top,"역전 시작 2025-11",VERM,-6,"right"),
+                            (war,0.0,"개전 2026-02-28",MUT,6,"left")]:
+        ax.axvline(x,color=c,lw=1.2,ls=(0,(3,3)))
+        ax.annotate(lab,(x,y),xytext=(dx,-10),textcoords="offset points",
+                    color=c,fontsize=12.5,ha=ha,va="top")
+    dlabel(ax,sp.index[-1],sp.iloc[-1],f" +{sp.iloc[-1]:.2f}%p",VERM,fs=14.5)
+    style(ax); ax.set_ylabel("Core PCE 빼기 Core CPI (%p, 전년동월비 차)",fontsize=13.5,color=SUB)
+    ax.xaxis.set_major_locator(mdates.YearLocator()); ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    title(fig,"⑪ 연준이 보는 물가가 CPI보다 더 높다 — 단, 개전보다 먼저 시작됐다",
+          "2025년 11월 부호가 뒤집힌 뒤 5월 +0.56%p까지 벌어졌다 · 전쟁(2/28)보다 석 달 앞선다")
+    foot(fig,"출처: FRED PCEPILFE(SA)·CPILFENS(NSA)  ·  두 지수는 가중치(주거)·포함범위(운용보수·고용주부담 의료비)·조정방식이 달라 차이 자체가 곧 원인은 아니다")
+    save(fig,"S11_core_wedge.png")
+
+for f in [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11]:
     f()
 print("charts done")
