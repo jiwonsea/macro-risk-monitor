@@ -15,10 +15,42 @@ from matplotlib.patches import FancyBboxPatch
 warnings.filterwarnings("ignore")
 
 # --- 한글 폰트 등록 ---
-for _p in ["/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-           "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"]:
-    fm.fontManager.addfont(_p)
-KFONT = fm.FontProperties(fname="/usr/share/fonts/truetype/nanum/NanumGothic.ttf").get_name()
+# 빌드 환경 잠금 해제: 특정 경로를 하드코딩하지 않고 후보를 순회한다.
+# 하나도 없으면 조용히 tofu(□□□)로 렌더링되지 않도록 검사한 후보를 모두 담아 예외를 낸다.
+# NOTE: 후보 목록이 길어지거나 두 번째 활성 post가 같은 탐색을 필요로 하면 그때
+#       이 함수만 blog/_lib/으로 추출한다 (2026-07-28_blog_lib_decision_handoff_feedback.md).
+_FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    "/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJKkr-Regular.otf",
+    "C:/Windows/Fonts/malgun.ttf",
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+]
+_FONT_EXTRA = ["/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"]  # 있으면 굵기용으로 함께 등록
+
+
+def _resolve_korean_font():
+    """존재하는 첫 한글 폰트를 등록하고 matplotlib family name을 돌려준다."""
+    primary = None
+    for p in _FONT_CANDIDATES:
+        if Path(p).exists():
+            fm.fontManager.addfont(p)
+            if primary is None:
+                primary = p
+    if primary is None:
+        raise RuntimeError(
+            "한글 폰트를 찾지 못했습니다. 검사한 후보:\n  "
+            + "\n  ".join(_FONT_CANDIDATES)
+            + "\n설치 예: apt-get install fonts-nanum  (또는 위 경로 중 하나에 폰트 배치)"
+        )
+    for p in _FONT_EXTRA:
+        if Path(p).exists():
+            fm.fontManager.addfont(p)
+    return fm.FontProperties(fname=primary).get_name()
+
+
+KFONT = _resolve_korean_font()
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
