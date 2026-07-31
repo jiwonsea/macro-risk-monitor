@@ -280,15 +280,15 @@ def s10():
 
     윗칸: 고용률·참가율이 같이 내려간다(= 사람이 빠져나간다).
     아랫칸: 참가율을 기준월에 고정한 반사실 실업률.
-    반사실은 항등식 U=(참가율-고용률)/참가율로 계산하되, 소수 첫째자리 반올림 때문에
-    공표 실업률과 미세하게 어긋나므로 '기준월에서 실제와 일치'하도록 차분으로 앵커링한다.
+    반사실은 항등식 U=(기준월 참가율-고용률)/기준월 참가율 그대로 쓴다.
+    (기준월 잔차를 차분 앵커링하는 방법도 있으나, 그건 반올림 오차를 고치는 대신
+     기준월의 오차를 미래 구간으로 이식한다. 공표치가 소수 첫째자리로 반올림돼 있으므로
+     이 값은 0.1%p 단위의 추정치이지 공식 통계가 아니다 — 각주로 명시한다.)
     """
     d=rd("s10_laborsupply.csv")
     BASE=pd.Timestamp("2025-11-01")            # 실업률 고점(4.5%) = 비교 기준월
     civ_base=d.loc[BASE,"civpart"]
-    u_hat_act=(d.civpart-d.emratio)/d.civpart*100
-    u_hat_cf =(civ_base -d.emratio)/civ_base *100
-    u_cf=(d.unrate+(u_hat_cf-u_hat_act))[d.index>=BASE]   # 기준월 이전 구간은 의미가 없어 그리지 않는다
+    u_cf=((civ_base-d.emratio)/civ_base*100)[d.index>=BASE]   # 기준월 이전 구간은 의미가 없어 그리지 않는다
     fig,(a1,a2)=plt.subplots(2,1,figsize=(12.5,8.6),height_ratios=[1,1],sharex=True)
     fig.subplots_adjust(top=0.82,bottom=0.10,left=0.07,right=0.84,hspace=0.13)
 
@@ -305,14 +305,15 @@ def s10():
     dlabel(a2,d.index[-1],d.unrate.iloc[-1],f" 공표 {d.unrate.iloc[-1]:.1f}%",BLUE,fs=14)
     dlabel(a2,d.index[-1],u_cf.iloc[-1],f" 참가율 고정 시 {u_cf.iloc[-1]:.1f}%",VERM,fs=14)
     a2.axvline(BASE,color=MUT,lw=1.1,ls=(0,(3,3)))
-    a2.annotate("기준월 2025-11\n(참가율 62.5% 고정)",(BASE,a2.get_ylim()[0]),xytext=(6,8),
+    a2.annotate(f"기준월 2025-11 (참가율 62.5% 고정)\n항등식 {u_cf.iloc[0]:.1f}% vs 공표 {d.loc[BASE,'unrate']:.1f}% — 반올림 잔차",
+                (BASE,a2.get_ylim()[0]),xytext=(6,8),
                 textcoords="offset points",color=MUT,fontsize=12,ha="left",va="bottom")
     style(a2); a2.set_ylabel("실업률 (%)",fontsize=13.5,color=SUB)
     a2.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1,7]))
     a2.xaxis.set_major_formatter(mdates.DateFormatter("%y.%m"))
     title(fig,"⑩ '완충'은 분자가 아니라 분모가 만든 것",
           "실업률은 4.5→4.2%로 내렸지만 고용률도 59.6→59.0%로 같이 내렸다 — 취업이 는 게 아니라 사람이 빠졌다")
-    foot(fig,"출처: FRED UNRATE·EMRATIO·CIVPART(모두 SA)  ·  반사실은 항등식 U=(참가율-고용률)/참가율, 기준월에서 공표치와 일치하도록 앵커링")
+    foot(fig,"출처: FRED UNRATE·EMRATIO·CIVPART(모두 SA)  ·  반사실 = 항등식 U=(기준월 참가율-고용률)/기준월 참가율. 공표치가 소수 첫째자리 반올림이라 0.1%p 단위 추정치")
     save(fig,"S10_laborsupply.png")
 
 # ---------------- S11 Core PCE − Core CPI 스프레드 ----------------

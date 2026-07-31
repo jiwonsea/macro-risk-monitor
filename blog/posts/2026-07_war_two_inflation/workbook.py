@@ -59,14 +59,15 @@ rows=[
  ["S1_FedPath","정책금리 목표범위 + SEP dot","FRED/Fed","DFEDTARU·DFEDTARL·SEP","일/—","SEP 2026 median 3.8%(수동)"],
  ["S2_Inflation","Core PCE·CPI YoY","FRED","PCEPILFE(SA)·CPIAUCNS·CPILFENS(NSA)","월","Core PCE는 SA, CPI는 NSA(BLS 공식 보도치와 일치) — 조정방식이 다르다"],
  ["S3_Oil","WTI·Brent","FRED","DCOILWTICO·DCOILBRENTEU","일","피크 idxmax=Brent 138.21(4/7)"],
- ["S4_SPR","전략비축유 재고","EIA","WCSSTUS1","주","계획172M/실제17.5M(4/24)/재고397.9M=주석"],
+ ["S4_SPR","전략비축유 재고","EIA","WCSSTUS1","주","주석값: 계획 172M / 4-24까지 실제 방출 17.5M / 4-24 시점 재고 397.9M — 셋 다 시계열이 아니라 주석"],
  ["S5_InflExp","기대인플레 SCE+5y5y","NY Fed/FRED","SCE 1y·3y·5y·T5YIFR","월","핵심 대비 차트"],
  ["S5b_Gas","휘발유 가격 기대","NY Fed","SCE gas","월","6월 1.5%로 급락"],
  ["S6_Consumer","카드 연체율","FRED","DRCCLACBS","분기","Equifax 13.12%와 다른 지표"],
  ["S7_Labor","실업률·고용증감","FRED","UNRATE·PAYEMS","월","4.2% / +57k — 해석은 S10 참조"],
  ["S8_EPU","경제정책 불확실성","FRED","USEPUINDXM","월","2026-06 ≈198"],
  ["S10_LaborSupply","실업률·고용률·참가율","FRED","UNRATE·EMRATIO·CIVPART·LNS11300060·U6RATE(SA)","월","분모(참가율) 축소 분해 — 반사실은 차트에서 계산"],
- ["S11_LaborComp","노동력 구성·시급","FRED","CLF16OV·LNU01073395·LNU01373395·NILFWJN·CES0500000003","월","외국인 LF·LFPR은 NSA · 26년 1월 인구통제 재벤치마킹 단절 주의"],
+ ["S11_LaborComp","노동력 구성·시급","FRED","CLF16OV·LNU01073395·LNU01373395·NILFWJN·CES0500000003","월","본문 6장(차트 ⑩)의 뒷받침 자료다 — 차트 ⑪이 아니다 · 외국인 LF·LFPR은 NSA · 26년 1월 인구통제 재벤치마킹 단절 주의"],
+ ["(시트 없음)","차트 ⑨ 대시보드 / 차트 ⑪ Core PCE−Core CPI 웨지","—","—","—","⑨는 다른 시트값의 요약, ⑪은 S2_Inflation의 두 열 차분이라 별도 원자료가 없다. 시트 번호와 차트 번호가 1:1이 아닌 지점은 이 둘뿐이다"],
 ]
 for j,h in enumerate(hdr,1):
     c=rm.cell(4,j,h); c.font=Font(bold=True,color="FFFFFF"); c.fill=PatternFill("solid",fgColor=HEADFILL)
@@ -123,7 +124,7 @@ lchart(ws,"고용률 · 참가율 (%)",3,last,3,5,"H3","%")
 lchart(ws,"실업률 U-3 (%)",3,last,2,2,"H21","%")
 # S11
 ws,df,last=sheet("S11_LaborComp","s11_laborcomposition.csv","⑪ 노동력 구성 · 시급",
-                 "총 노동력 -1,022k 중 외국인 -700k(68%) · 단 외국인 LFPR도 66.3→65.6 · AHE YoY 3.86→3.52%","FRED")
+                 "총 노동력 -1,022k(SA) · 외국인 -700k(NSA) — 조정방식이 달라 기여율로 나누지 않는다 · 외국인 LFPR 66.3→65.6 · AHE YoY 3.86→3.52%","FRED")
 lchart(ws,"노동력 수준(천명) — 총계 SA / 외국인 NSA",3,last,2,3,"I3","천명")
 lchart(ws,"시간당 임금 YoY(%)",3,last,7,7,"I21","%")
 
