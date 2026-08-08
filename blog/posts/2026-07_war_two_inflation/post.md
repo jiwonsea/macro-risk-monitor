@@ -5,9 +5,13 @@ published: 2026-07-28
 revised: 2026-08-01   # 개정 내역은 본문에 싣지 않는다. 기록은 notes/codex_handoffs/ 및 사후검증 글(2026-08_..._followup) 참조
 platform: naver
 data_as_of: 2026-07-28
-theses:
-  - fed_path_reaccel_risk        # status: draft (notes/codex_handoffs/)
-  - uncertainty_stagflation_domino  # status: draft (notes/codex_handoffs/)
+theses:                 # 둘 다 DRAFT — theses/ 에 등록돼 있지 않다(승격 차단 사유는 draft 파일 참조).
+  - name: fed_path_reaccel_risk
+    status: draft
+    path: notes/codex_handoffs/2026-07-22_fed_path_reaccel_risk_draft_thesis.yaml
+  - name: uncertainty_stagflation_domino
+    status: draft
+    path: notes/codex_handoffs/2026-07-22_uncertainty_stagflation_domino_draft_thesis.yaml
 charts: charts/S1..S11_*.png
 workbook: out/war_two_inflation_data.xlsx
 build: "python3 collect.py  # 네트워크 필요 → python3 charts.py && python3 workbook.py"
