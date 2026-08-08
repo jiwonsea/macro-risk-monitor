@@ -53,3 +53,6 @@ data/transcripts/**/*.txt.*
 
 # Backtest output — regenerate with `macro-risk backtest`
 reports/backtest/
+
+# git lock 정리용 임시 폴더 (컨테이너 세션이 만든다 — 사용자가 주기적으로 삭제)
+_to_delete/
