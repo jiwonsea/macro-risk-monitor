@@ -65,6 +65,16 @@ notes/codex_handoffs/        검증·개정 기록의 보관처
 
 ---
 
+## 4-b. 채점 체계 개선 — Codex 리뷰 완료 (반드시 먼저 읽을 것)
+
+`notes/codex_handoffs/2026-08-07_project_improvement_synthesis.md` (핸드오프·피드백 원본은 같은 폴더).
+
+**내가 틀렸던 것 3건 — 다시 제안하지 말 것.** (ㄱ) 블로그 채점을 본체 `engine/trigger.py`에 통합 — 대상이 다르다(연속 상태 vs 시점 예측). (ㄴ) v2 P13이 현재 데이터로 충족됐다 — 지표·임계·평가창이 미정의라 "재평가 게이트가 열렸다"까지만 말할 수 있다. (ㄷ) draft 두 개를 `theses/`로 승격 — 차단 사유가 percentile·gate·source 미지원이라 위치 문제가 아니다.
+
+**리뷰가 지목한 진짜 병:** 한 CSV에 세 의미가 섞여 있다 — ①예측 사건이 발생했는가 ②그것이 논지를 지지하는가 ③논지가 tail→base로 바뀌었는가. 9적중과 논지 약화의 공존이 여기서 나온다.
+
+**착수 순서 (리뷰 권고): 2 → 7 → 1 → 4 → 3 → 5 → 6. 하나만 한다면 2번.**
+
 ## 5. 남은 작업
 
 - [ ] **8/7 고용지표 중간 글** — 원글이 "여기가 도미노의 트리거"라고 지목한 날이므로 별도 글로 다룰지 결정. 채점 글(8/13)과 중복되지 않으려면 *판단*(tail을 base로 바꾸는가)을 다루고, 채점 글은 *결산*을 다룬다.
@@ -74,6 +84,11 @@ notes/codex_handoffs/        검증·개정 기록의 보관처
 - [ ] 마이다스 지원서에서 후속글 링크.
 - [ ] `fed_path_reaccel_risk` v3 · `uncertainty_stagflation_domino`를 DRAFT → `theses/`로 승격.
 - [ ] `collect.py`에 `CPILFESL` 추가 (SA/NSA 대조를 `data/`만으로 재현할 수 있게).
+- [ ] **[개선 2번 — 최우선]** `scorecard.csv`에 `observation_period`·`released_at`·`retrieved_at`·`vintage_policy`·`actual_first_print`·`actual_current` 추가하고 `actual`을 `actual_value`/`actual_unit`/`actual_display`로 분해. **적중률은 first print 고정, 논지 평가는 current vintage — 이중 장부.** 빈티지 정책은 지표별 사후 선택이 아니라 **예측 대상별 사전 선언**.
+- [ ] **[개선 7번]** 공식 release URL·실제 발표 시각 기록 + `registered_at < released_at <= scored_at` 검사. (`resolve_on > today`인데 verdict 있으면 실패는 불충분 — 발표가 당겨지면 옳은 채점을 거부한다.)
+- [ ] **[개선 1번]** `ScoreItem` Pydantic + `blog/tools/validate_scorecard.py`. 기준 동결은 별도 해시 대신 **`registered_commit` + `git show`** 대조. 오타는 원본 수정이 아니라 `correction_reason`/`corrected_on`/`supersedes` 추가로.
+- [ ] **[개선 4번]** `supports_claim`·`evidence_direction`·`dependency_group`(P5·P6·P7은 같은 그룹)·`thesis_transition_rule`.
+- [ ] **[개선 5번]** 숫자 검증 공용 코어 추출 + `value/unit/claim/source_url/as_of` 구조의 allowlist. `ai/verifier.py` 직접 재사용은 불가.
 - [ ] **사용자가 직접 `F:\dev\Portfolio\macro-risk-monitor\_to_delete\` 삭제** (`gitlocks_*` 16개 이상).
 
 ---
