@@ -59,8 +59,9 @@ items:
     category: 물가
     claim: Core PCE YoY가 5월 대비 유의하게 내려오지 않는다(정체)
     source_post_section: 4장
-    registered_at: 2026-07-28T00:00:00+09:00   # tz 필수
-    registered_at_precision: day               # day | minute — v1은 day, 정직하게 표기
+    registered_at: 2026-07-28T16:37:56+00:00   # 등록 커밋 66fd5e08의 시각 (자기신고 아님)
+    registered_at_source: commit               # commit | self_reported
+    # FOMC 발표는 2026-07-29T18:00Z — 등록이 약 25시간 앞섰음이 커밋으로 증명된다.
     criterion_hit: 5월 대비 -0.15%p 이내
     criterion_miss: -0.15%p 초과 하락
 
@@ -121,9 +122,13 @@ items:
 
 | 계산 방식 | 기준(5월) | 관측(6월) | 차이 | 기준선까지 |
 |---|---|---|---|---|
-| 등록 시점 값 기준 (**권고**) | 3.41 (등록일 공표치) | 3.29 (first print) | **−0.12%p** | 0.03%p |
-| 현재 계열 기준 (이번에 기입한 값) | 3.422 (개정) | 3.287 (개정) | −0.135%p | 0.015%p |
-| 순수 first print 기준 | 5월의 first print(≈6/26 발표치, **미확인**) | 3.29 | ? | ? |
+| `as_registered` 기준 (**권고**) | **3.4120** (등록 스냅샷) | 3.2865 (first print) | **−0.1255%p** | 0.0245%p |
+| 현재 계열 기준 (이번에 기입한 값) | 3.4216 (개정) | 3.2865 | −0.1350%p | 0.0150%p |
+| 순수 first print 기준 | 5월의 first print(≈6/26 발표치, **미확인**) | 3.2865 | ? | ? |
+
+**`as_registered` 값은 외부 조회 없이 저장소 안에서 재현된다.** 등록 커밋 `66fd5e08`의 `blog/posts/2026-07_war_two_inflation/data/s2_inflation.csv`에 `2026-05-01, core_pce_yoy = 3.412035932904045`가 들어 있고, 같은 커밋의 `manifest.json`에 `PCEPILFE last_obs=2026-05-01, last_value=130.082`가 있다. 현재 FRED 값은 130.094 — **지수가 130.082 → 130.094로 개정됐고 그것이 3.41 → 3.42의 정체다.**
+
+즉 v1 15건에 대해서는 **ALFRED가 필요 없다.** `data/*.csv` + `manifest.json`이 이미 등록 시점 빈티지 스냅샷이다. `inputs[].vintage: as_registered`는 `<registered_commit>:blog/.../data/<file>.csv`를 가리키면 되고, validator가 그 값을 실제로 읽어 대조할 수 있다(§4 V5 강화). ALFRED는 이 스냅샷이 없는 미래 지표에만 필요하다.
 
 세 번째 행이 핵심이다. **"모든 입력에 first print"를 기계적으로 적용하면 5월값으로 6월 26일 발표치를 써야 하는데, 그건 예측자가 7월 28일에 보고 있던 숫자가 아니다.** 예측은 "3.41에서 안 내려온다"였다. 그러니 기준값의 올바른 빈티지는 first print가 아니라 **`as_registered`** 다.
 
