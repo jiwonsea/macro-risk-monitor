@@ -37,6 +37,8 @@ class SourceKind(str, Enum):
     NEWS_RSS = "news_rss"
     MANUAL_OVERRIDE = "manual_override"
     EARNINGS_TRANSCRIPT_NLP = "earnings_transcript_nlp"
+    ECOS = "ecos"                # Bank of Korea ECOS Open API
+    DERIVED = "derived"          # arithmetic spread of two other series ("a - b")
 
 
 class PatchAction(str, Enum):

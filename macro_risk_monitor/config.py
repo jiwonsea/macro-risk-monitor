@@ -21,6 +21,8 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # ---------------------------------------------------------------------------
 ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
 FRED_API_KEY: str | None = os.getenv("FRED_API_KEY")
+# ECOS key; BOK_API_KEY accepted as an alias (fx-reserves-analyzer naming)
+ECOS_API_KEY: str | None = os.getenv("ECOS_API_KEY") or os.getenv("BOK_API_KEY")
 SEC_USER_AGENT: str = os.getenv("SEC_USER_AGENT", "macro-risk-monitor contact@example.com")
 
 # ---------------------------------------------------------------------------
@@ -59,9 +61,10 @@ for _d in (CACHE_DIR, REPORTS_HTML_DIR, REPORTS_PDF_DIR, REPORTS_RAW_DIR, LOGS_D
 FRED_CACHE_DIR = CACHE_DIR / "fred"
 YFINANCE_CACHE_DIR = CACHE_DIR / "yfinance"
 EDGAR_CACHE_DIR = CACHE_DIR / "edgar"
+ECOS_CACHE_DIR = CACHE_DIR / "ecos"
 NEWS_RSS_CACHE_DIR = CACHE_DIR / "news_rss"
 LLM_CACHE_DIR = CACHE_DIR / "llm"
-for _d in (FRED_CACHE_DIR, YFINANCE_CACHE_DIR, EDGAR_CACHE_DIR, NEWS_RSS_CACHE_DIR, LLM_CACHE_DIR):
+for _d in (FRED_CACHE_DIR, YFINANCE_CACHE_DIR, EDGAR_CACHE_DIR, ECOS_CACHE_DIR, NEWS_RSS_CACHE_DIR, LLM_CACHE_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------

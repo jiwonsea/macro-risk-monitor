@@ -7,7 +7,9 @@ from functools import lru_cache
 from .. import config as cfg
 from ..schemas import SourceKind
 from .base import DataSource, SourceUnavailable
+from .derived import DerivedSource
 from .earnings_transcript_nlp import TranscriptNlpSource
+from .ecos import EcosSource
 from .fred import FredSource
 from .manual_override import ManualOverrideSource
 from .news_rss import NewsRssSource
@@ -19,6 +21,10 @@ from .yfinance_source import YFinanceSource
 def get_source(kind: SourceKind, thesis_name: str | None = None) -> DataSource:
     if kind is SourceKind.FRED:
         return FredSource(cfg.FRED_API_KEY, cfg.FRED_CACHE_DIR, cfg.CACHE_TTL_HOURS)
+    if kind is SourceKind.ECOS:
+        return EcosSource(cfg.ECOS_API_KEY, cfg.ECOS_CACHE_DIR, cfg.CACHE_TTL_HOURS)
+    if kind is SourceKind.DERIVED:
+        return DerivedSource(lambda k: get_source(k, thesis_name))
     if kind is SourceKind.YFINANCE:
         return YFinanceSource(cfg.YFINANCE_CACHE_DIR)
     if kind is SourceKind.SEC_EDGAR:
